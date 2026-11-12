@@ -1,0 +1,10 @@
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="account.xml" />
+        <exclude domain="sharedpref" path="watch_progress.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="account.xml" />
+        <exclude domain="sharedpref" path="watch_progress.xml" />
+    </device-transfer>
+</data-extraction-rules>

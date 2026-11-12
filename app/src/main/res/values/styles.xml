@@ -1,0 +1,16 @@
+<resources>
+    <item type="id" name="playback_refresh" />
+    <string name="app_name">Boosty ATV</string>
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">#101015</item>
+        <item name="android:colorAccent">#FFAA81</item>
+        <item name="android:statusBarColor">#101015</item>
+        <item name="android:navigationBarColor">#101015</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <style name="CountryPickerTheme" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:colorBackgroundFloating">#201E27</item>
+        <item name="android:colorAccent">#FFAA81</item>
+    </style>
+</resources>
