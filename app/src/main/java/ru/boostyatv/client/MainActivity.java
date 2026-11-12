@@ -98,6 +98,10 @@ public final class MainActivity extends ComponentActivity {
     private static final int ACCENT = 0xffffaa81;
 
     private final ExecutorService network = Executors.newSingleThreadExecutor();
+    private final ExecutorService releaseNetwork = Executors.newSingleThreadExecutor();
+    private AppRelease startupUpdate;
+    private boolean updatingApp;
+    private boolean foreground;
     private final Artwork artwork = new Artwork();
     private final ArrayDeque<View> history = new ArrayDeque<>();
     private record ReactionTarget(String post, String comment) {}
@@ -197,6 +201,7 @@ public final class MainActivity extends ComponentActivity {
         getOnBackPressedDispatcher().addCallback(this, back);
         if (api.hasSession()) showFeed(null, null, false);
         else showLogin();
+        checkAppUpdate(null);
     }
 
     private void showLogin() {
@@ -1677,6 +1682,8 @@ public final class MainActivity extends ComponentActivity {
 
     @Override protected void onResume() {
         super.onResume();
+        foreground = true;
+        showStartupUpdate();
         refreshPlaybackLabels(host);
         syncWatchProgress();
     }
@@ -1696,7 +1703,13 @@ public final class MainActivity extends ComponentActivity {
         }
     }
 
+    @Override protected void onPause() {
+        foreground = false;
+        super.onPause();
+    }
+
     @Override protected void onDestroy() {
+        releaseNetwork.shutdownNow();
         if (webLogin != null) webLogin.close(false);
         handler.removeCallbacks(savePlaybackTick);
         watchHistory.stopListening(progressChanged);
@@ -1761,73 +1774,130 @@ public final class MainActivity extends ComponentActivity {
             }).show();
     }
 
-    private boolean updatingApp;
-
     private void showAbout() {
         LinearLayout screen = column();
         screen.addView(toolbar("О программе", true));
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
         LinearLayout content = column();
-        content.setPadding(dp(tv ? 38 : 16), dp(12), dp(tv ? 38 : 16), 0);
-        content.addView(label("Boosty ATV  " + BuildConfig.VERSION_NAME, 24, INK, true));
-        margin(content, label("Автор проекта: Sergey Molchanov (cergo666)", 16, INK, false), MATCH, WRAP, 12);
+        content.setPadding(dp(16), dp(12), dp(16), dp(24));
+        FrameLayout center = new FrameLayout(this);
+        center.addView(content, new FrameLayout.LayoutParams(
+            tv ? dp(560) : MATCH, WRAP, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
+        scroll.addView(center, new ScrollView.LayoutParams(MATCH, WRAP));
+
+        LinearLayout hero = column();
+        hero.setGravity(Gravity.CENTER_HORIZONTAL);
+        hero.setPadding(dp(20), dp(22), dp(20), dp(22));
+        GradientDrawable card = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+            new int[]{0xff39252e, PANEL});
+        card.setCornerRadius(dp(24));
+        hero.setBackground(card);
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.drawable.app_icon);
+        icon.setBackground(shape(BG, 18, 0));
+        icon.setClipToOutline(true);
+        hero.addView(icon, new LinearLayout.LayoutParams(dp(76), dp(76)));
+        margin(hero, label("Boosty ATV", 29, INK, true), WRAP, WRAP, 12);
+        margin(hero, label("Версия " + BuildConfig.VERSION_NAME, 15, ACCENT, true), WRAP, WRAP, 4);
+        margin(hero, label("Клиент Boosty для телефона и Android TV", 14, MUTED, false), WRAP, WRAP, 8);
+        content.addView(hero, new LinearLayout.LayoutParams(MATCH, WRAP));
+
         TextView status = label("", 15, MUTED, false);
-        margin(content, button("Проверить обновления", true, () -> checkAppUpdate(status)), MATCH, dp(50), 16);
-        margin(content, button("Проект на GitHub", false, () -> openProjectLink(AppRelease.PROJECT)), MATCH, dp(48), 8);
-        margin(content, status, MATCH, WRAP, 10);
-        screen.addView(content);
+        TextView check = button("Проверить обновления", true, () -> checkAppUpdate(status));
+        margin(content, check, MATCH, dp(52), 16);
+        margin(content, status, MATCH, WRAP, 6);
+        if (updatingApp) status.setText("Проверяем обновления…");
+        margin(content, label("Автор проекта", 13, MUTED, false), MATCH, WRAP, 16);
+        margin(content, label("Sergey Molchanov  ·  @cergo666", 17, INK, true), MATCH, WRAP, 4);
+        margin(content, button("Проект на GitHub ↗", false, () -> openProjectLink(AppRelease.PROJECT)), MATCH, dp(48), 12);
+        screen.addView(scroll, new LinearLayout.LayoutParams(MATCH, 0, 1));
         replace(screen, true);
+        if (tv) check.requestFocus();
     }
 
     private void checkAppUpdate(TextView status) {
         if (updatingApp) return;
         updatingApp = true;
-        status.setText("Проверяем обновления…");
-        readInBackground(AppRelease::latest, release -> {
+        if (status != null) status.setText("Проверяем обновления…");
+        runReleaseRequest(AppRelease::latest, release -> {
             updatingApp = false;
-            if (!status.isAttachedToWindow()) return;
             if (!release.newerThan(BuildConfig.VERSION_NAME)) {
-                status.setText("Установлена последняя версия.");
+                if (status != null) status.setText("Установлена последняя версия.");
                 return;
             }
-            status.setText("Доступна версия " + release.version());
-            new AlertDialog.Builder(this).setTitle("Boosty ATV " + release.version())
-                .setMessage(release.notes().isBlank() ? "Описание изменений отсутствует." : release.notes())
-                .setNegativeButton("Позже", null)
-                .setPositiveButton("Скачать и установить", (dialog, which) -> installAppUpdate(release, status))
-                .show();
+            if (status != null && status.isAttachedToWindow()) {
+                startupUpdate = null;
+                status.setText("Доступна версия " + release.version());
+                showUpdateDialog(release, status);
+            } else {
+                startupUpdate = release;
+                showStartupUpdate();
+            }
         }, failure -> {
             updatingApp = false;
-            status.setText("Не удалось проверить обновления. Попробуйте ещё раз.");
+            if (status != null) status.setText("Не удалось проверить обновления. Попробуйте ещё раз.");
+        });
+    }
+
+    private void showStartupUpdate() {
+        if (startupUpdate == null || !foreground || busy || video != null) return;
+        AppRelease release = startupUpdate;
+        startupUpdate = null;
+        showUpdateDialog(release, null);
+    }
+
+    private void showUpdateDialog(AppRelease release, TextView status) {
+        new AlertDialog.Builder(this).setTitle("Доступна версия " + release.version())
+            .setMessage(release.notes().isBlank() ? "Описание изменений отсутствует." : release.notes())
+            .setNegativeButton("Позже", null)
+            .setPositiveButton("Скачать и установить", (dialog, which) -> installAppUpdate(release, status))
+            .show();
+    }
+
+    private void updateStatus(TextView status, String message) {
+        if (status != null && status.isAttachedToWindow()) status.setText(message);
+        else Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+    }
+
+    private <T> void runReleaseRequest(Callable<T> request, Consumer<T> done, Consumer<Exception> failed) {
+        releaseNetwork.execute(() -> {
+            try {
+                T result = request.call();
+                runOnUiThread(() -> { if (!isDestroyed() && !isFinishing()) done.accept(result); });
+            } catch (Exception error) {
+                runOnUiThread(() -> { if (!isDestroyed() && !isFinishing()) failed.accept(error); });
+            }
         });
     }
 
     private void installAppUpdate(AppRelease release, TextView status) {
+        if (updatingApp) return;
         if (!getPackageManager().canRequestPackageInstalls()) {
-            status.setText("Разрешите установку для Boosty ATV, затем снова проверьте обновления.");
+            updateStatus(status, "Разрешите установку для Boosty ATV, затем снова проверьте обновления.");
             try {
                 startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                     Uri.parse("package:" + getPackageName())));
             } catch (ActivityNotFoundException e) {
-                status.setText("Установка обновления недоступна. APK можно скачать на GitHub.");
+                updateStatus(status, "Установка обновления недоступна. APK можно скачать на GitHub.");
             }
             return;
         }
         updatingApp = true;
-        status.setText("Скачиваем обновление…");
-        readInBackground(() -> release.download(getCacheDir()), apk -> {
+        updateStatus(status, "Скачиваем обновление…");
+        runReleaseRequest(() -> release.download(getCacheDir()), apk -> {
             updatingApp = false;
-            if (!status.isAttachedToWindow()) return;
             Uri uri = androidx.core.content.FileProvider.getUriForFile(this, getPackageName() + ".updates", apk);
             try {
                 startActivity(new Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
-                status.setText("Подтвердите установку в Android.");
+                updateStatus(status, "Подтвердите установку в Android.");
             } catch (ActivityNotFoundException e) {
-                status.setText("Системный установщик недоступен. APK можно скачать на GitHub.");
+                updateStatus(status, "Системный установщик недоступен. APK можно скачать на GitHub.");
             }
         }, failure -> {
             updatingApp = false;
-            status.setText("Не удалось скачать APK. Попробуйте ещё раз.");
+            updateStatus(status, "Не удалось скачать APK. Попробуйте ещё раз.");
         });
     }
 
@@ -1930,7 +2000,6 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void clearSessionScreen() {
-        updatingApp = false;
         if (video != null) goBack();
         sessionEpoch++;
         busy = false;
@@ -1978,6 +2047,7 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void replace(View view, boolean push) {
+        if (startupUpdate != null) host.post(this::showStartupUpdate);
         if (push && host.getChildCount() != 0) {
             View previous = host.getChildAt(0);
             previous.setTag(previous.findFocus());
