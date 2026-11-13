@@ -1,0 +1,17 @@
+Boosty ATV
+Copyright (c) 2026 Sergey Molchanov (cergo666)
+
+Boosty ATV is an unofficial, independent client for Boosty. It is not
+affiliated with, endorsed by, or supported by Boosty.
+
+The project is distributed under the MIT License; see LICENSE.
+
+Provenance of referenced projects
+---------------------------------
+The README lists BoostBuddy, BoostyVP and boosty-tv-app as behavioural and
+API references. No source code from those projects is included in this
+repository.
+
+If code from a differently licensed project is ever incorporated, it must be
+used only in a way compatible with that project's license, and this NOTICE and
+the LICENSE must be updated at the same time.
