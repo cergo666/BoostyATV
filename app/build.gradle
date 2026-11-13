@@ -15,7 +15,7 @@ def hasReleaseSigning = signingStore != null && signingStorePassword != null
     && signingKeyAlias != null && signingKeyPassword != null
 def versionCodeOverride = providers.gradleProperty('versionCode').orNull
 def versionNameOverride = providers.gradleProperty('versionName').orNull
-def baseVersionName = versionNameOverride ?: '1.1.1'
+def baseVersionName = versionNameOverride ?: '1.1.2'
 def versionMatcher = baseVersionName =~ /^(\d+)\.(\d+)\.(\d+)/
 def baseVersionCode = versionMatcher.find()
     ? versionMatcher.group(1).toInteger() * 1000000 + versionMatcher.group(2).toInteger() * 1000 + versionMatcher.group(3).toInteger()

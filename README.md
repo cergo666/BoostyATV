@@ -88,10 +88,10 @@ keyPassword=...
 Те же значения можно передать переменными окружения `BOOSTY_KEYSTORE`, `BOOSTY_KEYSTORE_PASSWORD`, `BOOSTY_KEY_ALIAS` и `BOOSTY_KEY_PASSWORD`. Версию можно переопределить без правки `build.gradle`:
 
 ```powershell
-.\gradlew.bat :app:assembleRelease -PversionCode=1001001 -PversionName=1.1.1
+.\gradlew.bat :app:assembleRelease -PversionCode=1001002 -PversionName=1.1.2
 ```
 
-Пуш тега `v1.1.1` запускает [workflow релиза](.github/workflows/release.yml): он считает `versionCode` как `major * 1 000 000 + minor * 1 000 + patch` (minor и patch — до 999), собирает подписанный APK из секретов и публикует GitHub-релиз.
+Пуш тега `v1.1.2` запускает [workflow релиза](.github/workflows/release.yml): он считает `versionCode` как `major * 1 000 000 + minor * 1 000 + patch` (minor и patch — до 999), собирает подписанный APK из секретов и публикует GitHub-релиз.
 
 В качестве референсов использованы [BoostBuddy](https://github.com/slartus/BoostBuddy), [BoostyVP](https://github.com/rico-x/BoostyVP) и [boosty-tv-app](https://github.com/ARDcode/boosty-tv-app).
 
