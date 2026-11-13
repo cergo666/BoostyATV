@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="reaction_labels">
+        <item>Нравится</item>
+        <item>Не нравится</item>
+        <item>Огонь</item>
+        <item>Сердце</item>
+        <item>Смешно</item>
+        <item>Удивление</item>
+        <item>Грустно</item>
+        <item>Злюсь</item>
+        <item>Забавно</item>
+        <item>Согласен</item>
+        <item>Думаю</item>
+        <item>Клоун</item>
+        <item>Моаи</item>
+        <item>Возмущение</item>
+        <item>Аплодисменты</item>
+        <item>Позвони</item>
+        <item>Холодно</item>
+        <item>Баклажан</item>
+        <item>Взрыв мозга</item>
+        <item>Крик</item>
+        <item>Корона</item>
+        <item>Бриллиант</item>
+        <item>Таю</item>
+        <item>Деньги</item>
+        <item>Тошнит</item>
+        <item>Праздник</item>
+        <item>Банан</item>
+        <item>Персик</item>
+        <item>Пицца</item>
+        <item>Череп</item>
+        <item>Влюблён</item>
+        <item>Ракета</item>
+        <item>Брызги</item>
+        <item>Молния</item>
+        <item>Плачу</item>
+        <item>Спасибо</item>
+    </string-array>
+</resources>

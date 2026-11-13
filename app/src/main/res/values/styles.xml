@@ -1,6 +1,6 @@
 <resources>
-    <item type="id" name="playback_refresh" />
-    <string name="app_name">Boosty ATV</string>
+    <item type="id" name="refresh_tag" />
+    <item type="id" name="artwork_url" />
     <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowBackground">#101015</item>

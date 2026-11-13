@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">Boosty ATV</string>
+
+    <!-- Common -->
+    <string name="ok">ОК</string>
+    <string name="cancel">Отмена</string>
+    <string name="retry">Повторить</string>
+    <string name="loading">Загрузка…</string>
+    <string name="loading_more">Загрузить ещё</string>
+    <string name="no_more">Подходящих публикаций нет.</string>
+    <string name="error_load_failed">Не удалось загрузить. Повторить</string>
+    <string name="error_connection">Не удалось получить ответ Boosty. Проверьте соединение и повторите.</string>
+    <string name="error_too_many_requests">Слишком много запросов. Попробуйте позже.</string>
+    <string name="error_session_expired">Сессия истекла. Войдите снова.</string>
+
+    <!-- Login -->
+    <string name="login_title_phone">Вход по телефону</string>
+    <string name="login_title_tv">Вход на ТВ</string>
+    <string name="login_title_code">Введите код</string>
+    <string name="login_hint_phone">Введите номер, привязанный к вашему аккаунту Boosty.</string>
+    <string name="login_hint_code">000000</string>
+    <string name="login_label_phone">Номер телефона</string>
+    <string name="login_label_code">Код из сообщения</string>
+    <string name="login_action_get_code">Получить код</string>
+    <string name="login_action_sign_in">Войти</string>
+    <string name="login_action_change_number">Изменить номер</string>
+    <string name="login_action_resend">Выслать снова</string>
+    <string name="login_action_cancel_pair">Отменить подключение</string>
+    <string name="login_action_tv_phone">Войти с телефона</string>
+    <string name="login_action_social">Через соцсеть</string>
+    <string name="login_error_select_country">Выберите страну и введите номер или вставьте полный номер с +.</string>
+    <string name="login_error_code_format">Введите 6 цифр из сообщения.</string>
+    <string name="login_error_not_sent">Boosty не подтвердил отправку кода.</string>
+    <string name="login_error_captcha">Boosty запросил CAPTCHA. Сейчас вход с этого устройства недоступен.</string>
+    <string name="login_error_unsupported_prefix">Boosty не поддерживает этот код страны.</string>
+    <string name="login_error_not_registered">Привяжите номер к своему аккаунту на сайте Boosty.</string>
+    <string name="login_error_invalid_number">Boosty не принял номер. Проверьте код страны и номер.</string>
+    <string name="login_error_code_invalid">Код неверен или истёк. Проверьте его или запросите новый.</string>
+    <string name="login_resend_in">Повторная отправка через %d с.</string>
+    <string name="login_qr_prompt">Наведите камеру на QR-код Boosty ATV</string>
+    <string name="login_qr_not_pairing">Это не QR-код подключения Boosty ATV.</string>
+    <string name="login_pair_title">Вход на телевизоре</string>
+    <string name="login_pair_transfer_current">Передать текущий вход</string>
+    <string name="login_pair_by_phone">По номеру телефона</string>
+    <string name="login_pair_via_social">Через соцсеть на сайте</string>
+    <string name="login_pair_confirm_title">Передать вход на ТВ?</string>
+    <string name="login_pair_confirm_message">Телевизор получит временный доступ к вашему аккаунту Boosty. Когда срок доступа истечёт, его можно передать снова.</string>
+    <string name="login_pair_confirm_grant">Передать</string>
+    <string name="login_pair_connected">Телевизор подключён.</string>
+    <string name="login_pair_qr_expired">QR-код истёк. Откройте новый код для входа.</string>
+    <string name="login_pair_network">Телевизор не отвечает. Проверьте общую сеть и откройте новый QR-код.</string>
+    <string name="login_pair_tv_not_connected">Подключите телевизор к домашней сети.</string>
+    <string name="login_pair_cannot_open">Не удалось открыть подключение к телевизору.</string>
+    <string name="login_pair_cannot_create_qr">Не удалось создать QR-код.</string>
+    <string name="login_pair_already_connected">Телевизор уже подключён.</string>
+    <string name="login_pair_invalid_phone_format">Введите номер в международном формате.</string>
+    <string name="login_pair_request_code_first">Сначала запросите код.</string>
+    <string name="login_pair_invalid_code_format">Введите шесть цифр.</string>
+    <string name="login_pair_unknown_method">Неизвестный способ входа.</string>
+    <string name="login_web_title">boosty.to</string>
+    <string name="login_web_finish">Завершить вход</string>
+    <string name="login_web_transfer">Передать на ТВ</string>
+    <string name="login_web_read_session">Вход в Boosty выполнен. Нажмите «Передать на ТВ».</string>
+    <string name="login_web_no_session">На boosty.to ещё нет активной сессии. Войдите на сайте и нажмите кнопку снова.</string>
+    <string name="login_web_return">Завершите вход и дождитесь возврата на boosty.to.</string>
+    <string name="login_web_unsupported_site">Этот сайт не входит в поддерживаемые страницы входа Boosty.</string>
+    <string name="login_web_google_browser">Google требует системный браузер. Для входа в Boosty ATV можно использовать привязанный номер телефона.</string>
+    <string name="login_web_session_incomplete">Сайт ещё не завершил вход в Boosty.</string>
+    <string name="login_delivery_sms">Boosty выбрал SMS. Проверьте сообщения на телефоне.</string>
+    <string name="login_delivery_telegram">Boosty выбрал Telegram. Проверьте сообщения от бота Boosty.</string>
+    <string name="login_delivery_default">Boosty принял запрос. Проверьте личные сообщения в приложении Boosty, Telegram-бот и SMS.</string>
+    <string name="login_country_picker_title">Код страны</string>
+    <string name="login_country_search_hint">Страна или код</string>
+    <string name="login_country_not_found">Страны не найдены</string>
+    <string name="login_country_code_desc">%1$s, %2$s</string>
+    <string name="login_keypad_delete">Удалить цифру</string>
+
+    <!-- Feed -->
+    <string name="feed_title">Лента</string>
+    <string name="feed_subscriptions">Подписки</string>
+    <string name="feed_qr">QR</string>
+    <string name="feed_qr_description">Сканировать QR для подключения ТВ</string>
+    <string name="feed_menu">Меню</string>
+    <string name="feed_all_posts">Все посты</string>
+    <string name="feed_videos_only">Видео</string>
+    <string name="feed_channel_search">Поиск видео</string>
+    <string name="feed_channel_tags">Теги</string>
+    <string name="feed_search_dialog_title">Поиск по каналу</string>
+    <string name="feed_search_dialog_hint">Название видео</string>
+    <string name="feed_search_dialog_find">Найти</string>
+    <string name="feed_tags_dialog_title">Теги канала</string>
+    <string name="feed_tags_no_tags">У канала пока нет тегов.</string>
+    <string name="feed_tags_reset">Сбросить</string>
+    <string name="feed_tags_apply">Применить</string>
+    <string name="feed_no_subscriptions">У вас пока нет подписок.</string>
+    <string name="feed_loading_publications">Загрузка публикаций…</string>
+
+    <!-- Post -->
+    <string name="post_title">Публикация</string>
+    <string name="post_access_required">Для этой публикации нужен доступ на Boosty.</string>
+    <string name="post_watch_video">Смотреть видео</string>
+    <string name="post_continue_watching">Продолжить с %s</string>
+    <string name="post_video_unavailable">Видео пока недоступно.</string>
+    <string name="post_comments">Комментарии</string>
+    <string name="post_no_comments">Комментариев пока нет.</string>
+    <string name="post_no_replies">Ответов пока нет.</string>
+    <string name="post_replies">Ответы (%d)</string>
+    <string name="post_collapse_replies">Свернуть ответы</string>
+    <string name="post_author_unknown">Пользователь Boosty</string>
+    <string name="post_app_name">Boosty</string>
+    <string name="post_untitled">Публикация Boosty</string>
+    <string name="post_reaction_button">Реакция</string>
+    <string name="post_reaction_remove">Убрать реакцию</string>
+    <string name="post_reaction_dialog_title">Реакция</string>
+    <string name="post_reaction_load_failed">Не удалось загрузить реакции канала.</string>
+    <string name="post_reaction_disabled">Реакции отключены автором.</string>
+    <string name="post_reaction_save_failed">Boosty не сохранил реакцию. Попробуйте ещё раз.</string>
+    <string name="post_video_play_with_title">▶  %s</string>
+
+    <!-- Player -->
+    <string name="player_settings">Настройки видео</string>
+    <string name="player_speed">Скорость</string>
+    <string name="player_audio_track">Аудиодорожка</string>
+    <string name="player_subtitles">Субтитры</string>
+    <string name="player_frame_size">Размер кадра</string>
+    <string name="player_seek_time">Перейти ко времени</string>
+    <string name="player_from_start">С начала</string>
+    <string name="player_stream_stats">Статистика потоков</string>
+    <string name="player_hide_stats">Скрыть статистику</string>
+    <string name="player_frame_fit">Вписать</string>
+    <string name="player_frame_zoom">Заполнить с обрезкой</string>
+    <string name="player_frame_fill">Растянуть</string>
+    <string name="player_speed_05">0,5×</string>
+    <string name="player_speed_075">0,75×</string>
+    <string name="player_speed_normal">Обычная</string>
+    <string name="player_speed_125">1,25×</string>
+    <string name="player_speed_150">1,5×</string>
+    <string name="player_speed_175">1,75×</string>
+    <string name="player_speed_200">2×</string>
+    <string name="player_seek_hint">ЧЧ:ММ:СС</string>
+    <string name="player_seek_error">Введите время в пределах видео.</string>
+    <string name="player_error_playback">Не удалось воспроизвести видео. Обновите ленту и откройте публикацию снова.</string>
+    <string name="player_error_go_to_post">К публикации</string>
+    <string name="player_no_tracks">В этом видео нет доступных дорожек.</string>
+    <string name="player_stats_video">Видео</string>
+    <string name="player_stats_audio">Аудио</string>
+    <string name="player_stats_buffer">Буфер</string>
+    <string name="player_progress_watched">Просмотрено %d%%</string>
+    <string name="player_external_not_found">Сторонний плеер не найден. Открываю встроенный.</string>
+    <string name="player_external_chooser">Открыть видео в плеере</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_quality">Качество видео</string>
+    <string name="settings_player">Плеер</string>
+    <string name="settings_theme">Тема</string>
+    <string name="settings_theme_dark">Тёмная</string>
+    <string name="settings_theme_oled">OLED · чёрный фон</string>
+    <string name="settings_connect_tv">Подключить ТВ</string>
+
+    <!-- Account menu -->
+    <string name="account_refresh_feed">Обновить ленту</string>
+    <string name="account_settings">Настройки</string>
+    <string name="account_about">О программе</string>
+    <string name="account_logout">Выйти из аккаунта</string>
+    <string name="account_logout_confirm">Выйти из аккаунта Boosty на этом устройстве?</string>
+    <string name="account_logout_button">Выйти</string>
+
+    <!-- About -->
+    <string name="about_title">О программе</string>
+    <string name="about_version">Версия %s</string>
+    <string name="about_subtitle">Клиент Boosty для телефона и Android TV</string>
+    <string name="about_check_updates">Проверить обновления</string>
+    <string name="about_updates_checking">Проверяем обновления…</string>
+    <string name="about_updates_latest">Установлена последняя версия.</string>
+    <string name="about_updates_check_failed">Не удалось проверить обновления. Попробуйте ещё раз.</string>
+    <string name="about_author_title">Автор проекта</string>
+    <string name="about_author">Sergey Molchanov  ·  @cergo666</string>
+    <string name="about_github">Проект на GitHub ↗</string>
+    <string name="about_no_changelog">Описание изменений отсутствует.</string>
+    <string name="about_update_available">Доступна версия %s</string>
+
+    <!-- Update -->
+    <string name="update_install_later">Позже</string>
+    <string name="update_install">Скачать и установить</string>
+    <string name="update_downloading">Скачиваем обновление…</string>
+    <string name="update_download_title">Скачивание обновления</string>
+    <string name="update_download_cancelled">Скачивание отменено.</string>
+    <string name="update_install_confirm">Подтвердите установку в Android.</string>
+    <string name="update_install_unknown_sources">Разрешите установку для Boosty ATV, затем снова проверьте обновления.</string>
+    <string name="update_install_unavailable">Установка обновления недоступна. APK можно скачать на GitHub.</string>
+    <string name="update_download_failed">Не удалось скачать APK. Попробуйте ещё раз.</string>
+    <string name="update_installer_unavailable">Системный установщик недоступен. APK можно скачать на GitHub.</string>
+
+    <!-- Navigation -->
+    <string name="nav_back">Назад</string>
+    <string name="nav_close">Закрыть</string>
+
+    <!-- Time -->
+    <string name="time_hms">%1$d:%2$02d:%3$02d</string>
+    <string name="time_ms">%1$d:%2$02d</string>
+
+    <!-- Placeholders -->
+    <string name="placeholder_video">▶</string>
+    <string name="placeholder_image">▤</string>
+    <string name="login_hint_no_code">Без кода</string>
+    <string name="login_pair_instruction">Откройте Boosty ATV на телефоне, нажмите «QR» и отсканируйте код. Устройства должны быть в одной сети.</string>
+    <string name="login_pair_qr_description">QR-код подключения</string>
+    <string name="login_pair_phone_title">Вход с телефона</string>
+    <string name="feed_filter_search">Название: %1$s</string>
+    <string name="feed_filter_tag">#%1$s</string>
+    <string name="post_video_suffix">, видео</string>
+    <string name="player_menu_quality">Качество видео  ·  %1$s</string>
+    <string name="player_menu_speed">Скорость  ·  %1$s×</string>
+    <string name="player_seek_go">Перейти</string>
+    <string name="settings_quality_value">Качество видео  ·  %1$s</string>
+    <string name="settings_player_value">Плеер  ·  %1$s</string>
+    <string name="settings_theme_value">Тема  ·  %1$s</string>
+    <string name="player_stats_channels">%1$d кан.</string>
+    <string name="player_stats_khz">%.1f кГц</string>
+    <string name="player_stats_seconds">%.1f с</string>
+    <string name="player_stats_kbps">%1$d кбит/с</string>
+    <string name="player_stats_none">—</string>
+    <string name="error_http">Boosty не выполнил запрос (HTTP %1$d).</string>
+    <string name="error_session_incomplete">Boosty не вернул полную сессию.</string>
+    <string name="error_account_unconfirmed">Не удалось подтвердить аккаунт Boosty.</string>
+    <string name="error_phone_session_missing">На телефоне нет действующей сессии Boosty.</string>
+    <string name="error_phone_session_expired">Вход с телефона истёк. Подключите телевизор по новому QR-коду.</string>
+    <string name="error_login_incomplete">Boosty вернул неполные данные для входа.</string>
+    <string name="error_session_save">Не удалось сохранить сессию на устройстве.</string>
+    <string name="login_error_ratelimit">Слишком много запросов. Попробуйте через несколько минут.</string>
+    <string name="login_pair_television_failed">Телевизор не смог завершить запрос к Boosty.</string>
+    <string name="login_pair_not_confirmed">Телевизор не подтвердил вход.</string>
+    <string name="player_auto">Авто</string>
+    <string name="player_builtin">Встроенный плеер</string>
+    <string name="player_other">Другой плеер</string>
+    <string name="update_verification_failed">Обновление не прошло проверку подписи или versionCode. Скачайте APK с GitHub.</string>
+    <string name="update_in_progress_wait">Дождитесь окончания загрузки обновления.</string>
+    <string name="login_country_prefix">%1$s  %2$s  ▾</string>
+    <string name="update_download_progress">%1$d%%</string>
+</resources>

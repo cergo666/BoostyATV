@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="reaction_labels">
+        <item>Like</item>
+        <item>Dislike</item>
+        <item>Fire</item>
+        <item>Heart</item>
+        <item>Funny</item>
+        <item>Surprised</item>
+        <item>Sad</item>
+        <item>Angry</item>
+        <item>Playful</item>
+        <item>Agree</item>
+        <item>Thinking</item>
+        <item>Clown</item>
+        <item>Moai</item>
+        <item>Outraged</item>
+        <item>Applause</item>
+        <item>Call me</item>
+        <item>Cold</item>
+        <item>Eggplant</item>
+        <item>Mind blown</item>
+        <item>Scream</item>
+        <item>Crown</item>
+        <item>Diamond</item>
+        <item>Melting</item>
+        <item>Money</item>
+        <item>Nausea</item>
+        <item>Party</item>
+        <item>Banana</item>
+        <item>Peach</item>
+        <item>Pizza</item>
+        <item>Skull</item>
+        <item>In love</item>
+        <item>Rocket</item>
+        <item>Splash</item>
+        <item>Lightning</item>
+        <item>Crying</item>
+        <item>Thanks</item>
+    </string-array>
+</resources>

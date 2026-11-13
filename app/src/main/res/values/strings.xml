@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">Boosty ATV</string>
+
+    <!-- Common -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="retry">Retry</string>
+    <string name="loading">Loading…</string>
+    <string name="loading_more">Load more</string>
+    <string name="no_more">No matching publications.</string>
+    <string name="error_load_failed">Failed to load. Retry</string>
+    <string name="error_connection">Failed to get response from Boosty. Check your connection and try again.</string>
+    <string name="error_too_many_requests">Too many requests. Try again later.</string>
+    <string name="error_session_expired">Session expired. Log in again.</string>
+
+    <!-- Login -->
+    <string name="login_title_phone">Phone login</string>
+    <string name="login_title_tv">TV login</string>
+    <string name="login_title_code">Enter code</string>
+    <string name="login_hint_phone">Enter the phone number linked to your Boosty account.</string>
+    <string name="login_hint_code">000000</string>
+    <string name="login_label_phone">Phone number</string>
+    <string name="login_label_code">Code from message</string>
+    <string name="login_action_get_code">Get code</string>
+    <string name="login_action_sign_in">Sign in</string>
+    <string name="login_action_change_number">Change number</string>
+    <string name="login_action_resend">Resend</string>
+    <string name="login_action_cancel_pair">Cancel pairing</string>
+    <string name="login_action_tv_phone">Log in with phone</string>
+    <string name="login_action_social">Via social network</string>
+    <string name="login_error_select_country">Select a country and enter a number or paste a full number with +.</string>
+    <string name="login_error_code_format">Enter 6 digits from the message.</string>
+    <string name="login_error_not_sent">Boosty did not confirm code sending.</string>
+    <string name="login_error_captcha">Boosty requested CAPTCHA. Login from this device is currently unavailable.</string>
+    <string name="login_error_unsupported_prefix">Boosty does not support this country code.</string>
+    <string name="login_error_not_registered">Link your number to your account on the Boosty website.</string>
+    <string name="login_error_invalid_number">Boosty did not accept the number. Check country code and number.</string>
+    <string name="login_error_code_invalid">Code is incorrect or expired. Check it or request a new one.</string>
+    <string name="login_resend_in">Resend in %d s.</string>
+    <string name="login_qr_prompt">Point camera at Boosty ATV QR code</string>
+    <string name="login_qr_not_pairing">This is not a Boosty ATV pairing QR code.</string>
+    <string name="login_pair_title">TV login</string>
+    <string name="login_pair_transfer_current">Transfer current session</string>
+    <string name="login_pair_by_phone">By phone number</string>
+    <string name="login_pair_via_social">Via social network on website</string>
+    <string name="login_pair_confirm_title">Transfer login to TV?</string>
+    <string name="login_pair_confirm_message">TV will receive temporary access to your Boosty account. When access expires, it can be transferred again.</string>
+    <string name="login_pair_confirm_grant">Transfer</string>
+    <string name="login_pair_connected">TV connected.</string>
+    <string name="login_pair_qr_expired">QR code expired. Open a new code to log in.</string>
+    <string name="login_pair_network">TV not responding. Check shared network and open a new QR code.</string>
+    <string name="login_pair_tv_not_connected">Connect TV to home network.</string>
+    <string name="login_pair_cannot_open">Failed to open TV connection.</string>
+    <string name="login_pair_cannot_create_qr">Failed to create QR code.</string>
+    <string name="login_pair_already_connected">TV already connected.</string>
+    <string name="login_pair_invalid_phone_format">Enter number in international format.</string>
+    <string name="login_pair_request_code_first">Request code first.</string>
+    <string name="login_pair_invalid_code_format">Enter six digits.</string>
+    <string name="login_pair_unknown_method">Unknown login method.</string>
+    <string name="login_web_title">boosty.to</string>
+    <string name="login_web_finish">Finish login</string>
+    <string name="login_web_transfer">Transfer to TV</string>
+    <string name="login_web_read_session">Boosty login completed. Press "Transfer to TV".</string>
+    <string name="login_web_no_session">No active session on boosty.to yet. Log in on the website and press the button again.</string>
+    <string name="login_web_return">Finish login and wait for return to boosty.to.</string>
+    <string name="login_web_unsupported_site">This site is not among supported Boosty login pages.</string>
+    <string name="login_web_google_browser">Google requires system browser. For Boosty ATV login you can use linked phone number.</string>
+    <string name="login_web_session_incomplete">Website has not completed Boosty login yet.</string>
+    <string name="login_delivery_sms">Boosty chose SMS. Check messages on your phone.</string>
+    <string name="login_delivery_telegram">Boosty chose Telegram. Check messages from Boosty bot.</string>
+    <string name="login_delivery_default">Boosty accepted request. Check personal messages in Boosty app, Telegram bot and SMS.</string>
+    <string name="login_country_picker_title">Country code</string>
+    <string name="login_country_search_hint">Country or code</string>
+    <string name="login_country_not_found">No countries found</string>
+    <string name="login_country_code_desc">%1$s, %2$s</string>
+    <string name="login_keypad_delete">Delete digit</string>
+
+    <!-- Feed -->
+    <string name="feed_title">Feed</string>
+    <string name="feed_subscriptions">Subscriptions</string>
+    <string name="feed_qr">QR</string>
+    <string name="feed_qr_description">Scan QR to connect TV</string>
+    <string name="feed_menu">Menu</string>
+    <string name="feed_all_posts">All posts</string>
+    <string name="feed_videos_only">Video</string>
+    <string name="feed_channel_search">Search videos</string>
+    <string name="feed_channel_tags">Tags</string>
+    <string name="feed_search_dialog_title">Search in channel</string>
+    <string name="feed_search_dialog_hint">Video title</string>
+    <string name="feed_search_dialog_find">Find</string>
+    <string name="feed_tags_dialog_title">Channel tags</string>
+    <string name="feed_tags_no_tags">Channel has no tags yet.</string>
+    <string name="feed_tags_reset">Reset</string>
+    <string name="feed_tags_apply">Apply</string>
+    <string name="feed_no_subscriptions">You have no subscriptions yet.</string>
+    <string name="feed_loading_publications">Loading publications…</string>
+
+    <!-- Post -->
+    <string name="post_title">Post</string>
+    <string name="post_access_required">Access to this publication requires Boosty access.</string>
+    <string name="post_watch_video">Watch video</string>
+    <string name="post_continue_watching">Continue from %s</string>
+    <string name="post_video_unavailable">Video not available yet.</string>
+    <string name="post_comments">Comments</string>
+    <string name="post_no_comments">No comments yet.</string>
+    <string name="post_no_replies">No replies yet.</string>
+    <string name="post_replies">Replies (%d)</string>
+    <string name="post_collapse_replies">Collapse replies</string>
+    <string name="post_author_unknown">Boosty user</string>
+    <string name="post_app_name">Boosty</string>
+    <string name="post_untitled">Boosty post</string>
+    <string name="post_reaction_button">Reaction</string>
+    <string name="post_reaction_remove">Remove reaction</string>
+    <string name="post_reaction_dialog_title">Reaction</string>
+    <string name="post_reaction_load_failed">Failed to load channel reactions.</string>
+    <string name="post_reaction_disabled">Reactions disabled by author.</string>
+    <string name="post_reaction_save_failed">Boosty did not save reaction. Try again.</string>
+    <string name="post_video_play_with_title">▶  %s</string>
+
+    <!-- Player -->
+    <string name="player_settings">Video settings</string>
+    <string name="player_speed">Speed</string>
+    <string name="player_audio_track">Audio track</string>
+    <string name="player_subtitles">Subtitles</string>
+    <string name="player_frame_size">Frame size</string>
+    <string name="player_seek_time">Go to time</string>
+    <string name="player_from_start">From start</string>
+    <string name="player_stream_stats">Stream stats</string>
+    <string name="player_hide_stats">Hide stats</string>
+    <string name="player_frame_fit">Fit</string>
+    <string name="player_frame_zoom">Fill with crop</string>
+    <string name="player_frame_fill">Stretch</string>
+    <string name="player_speed_05">0.5×</string>
+    <string name="player_speed_075">0.75×</string>
+    <string name="player_speed_normal">Normal</string>
+    <string name="player_speed_125">1.25×</string>
+    <string name="player_speed_150">1.5×</string>
+    <string name="player_speed_175">1.75×</string>
+    <string name="player_speed_200">2×</string>
+    <string name="player_seek_hint">HH:MM:SS</string>
+    <string name="player_seek_error">Enter time within the video.</string>
+    <string name="player_error_playback">Failed to play video. Refresh feed and open publication again.</string>
+    <string name="player_error_go_to_post">To post</string>
+    <string name="player_no_tracks">No tracks available in this video.</string>
+    <string name="player_stats_video">Video</string>
+    <string name="player_stats_audio">Audio</string>
+    <string name="player_stats_buffer">Buffer</string>
+    <string name="player_progress_watched">Watched %d%%</string>
+    <string name="player_external_not_found">External player not found. Opening built-in.</string>
+    <string name="player_external_chooser">Open video in player</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_quality">Video quality</string>
+    <string name="settings_player">Player</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_oled">OLED · black background</string>
+    <string name="settings_connect_tv">Connect TV</string>
+
+    <!-- Account menu -->
+    <string name="account_refresh_feed">Refresh feed</string>
+    <string name="account_settings">Settings</string>
+    <string name="account_about">About</string>
+    <string name="account_logout">Log out of account</string>
+    <string name="account_logout_confirm">Log out of Boosty account on this device?</string>
+    <string name="account_logout_button">Log out</string>
+
+    <!-- About -->
+    <string name="about_title">About</string>
+    <string name="about_version">Version %s</string>
+    <string name="about_subtitle">Boosty client for phone and Android TV</string>
+    <string name="about_check_updates">Check for updates</string>
+    <string name="about_updates_checking">Checking for updates…</string>
+    <string name="about_updates_latest">Latest version installed.</string>
+    <string name="about_updates_check_failed">Failed to check for updates. Try again.</string>
+    <string name="about_author_title">Project author</string>
+    <string name="about_author">Sergey Molchanov · @cergo666</string>
+    <string name="about_github">Project on GitHub ↗</string>
+    <string name="about_no_changelog">No changelog available.</string>
+    <string name="about_update_available">Version %s available</string>
+
+    <!-- Update -->
+    <string name="update_install_later">Later</string>
+    <string name="update_install">Download and install</string>
+    <string name="update_downloading">Downloading update…</string>
+    <string name="update_download_title">Downloading update</string>
+    <string name="update_download_cancelled">Download cancelled.</string>
+    <string name="update_install_confirm">Confirm installation in Android.</string>
+    <string name="update_install_unknown_sources">Allow installation for Boosty ATV, then check for updates again.</string>
+    <string name="update_install_unavailable">Update installation unavailable. APK can be downloaded from GitHub.</string>
+    <string name="update_download_failed">Failed to download APK. Try again.</string>
+    <string name="update_installer_unavailable">System installer unavailable. APK can be downloaded from GitHub.</string>
+
+    <!-- Navigation -->
+    <string name="nav_back">Back</string>
+    <string name="nav_close">Close</string>
+
+    <!-- Time -->
+    <string name="time_hms">%1$d:%2$02d:%3$02d</string>
+    <string name="time_ms">%1$d:%2$02d</string>
+
+    <!-- Placeholders -->
+    <string name="placeholder_video">▶</string>
+    <string name="placeholder_image">▤</string>
+    <string name="login_hint_no_code">Without country code</string>
+    <string name="login_pair_instruction">Open Boosty ATV on your phone, tap QR and scan the code. Both devices must be on the same network.</string>
+    <string name="login_pair_qr_description">Pairing QR code</string>
+    <string name="login_pair_phone_title">Phone login</string>
+    <string name="feed_filter_search">Title: %1$s</string>
+    <string name="feed_filter_tag">#%1$s</string>
+    <string name="post_video_suffix">, video</string>
+    <string name="player_menu_quality">Video quality  ·  %1$s</string>
+    <string name="player_menu_speed">Speed  ·  %1$s×</string>
+    <string name="player_seek_go">Go</string>
+    <string name="settings_quality_value">Video quality  ·  %1$s</string>
+    <string name="settings_player_value">Player  ·  %1$s</string>
+    <string name="settings_theme_value">Theme  ·  %1$s</string>
+    <string name="player_stats_channels">%1$d ch.</string>
+    <string name="player_stats_khz">%.1f kHz</string>
+    <string name="player_stats_seconds">%.1f s</string>
+    <string name="player_stats_kbps">%1$d kbps</string>
+    <string name="player_stats_none">—</string>
+    <string name="error_http">Boosty did not complete the request (HTTP %1$d).</string>
+    <string name="error_session_incomplete">Boosty did not return a complete session.</string>
+    <string name="error_account_unconfirmed">Could not verify the Boosty account.</string>
+    <string name="error_phone_session_missing">There is no active Boosty session on the phone.</string>
+    <string name="error_phone_session_expired">The phone session has expired. Pair the TV again with a new QR code.</string>
+    <string name="error_login_incomplete">Boosty returned incomplete login data.</string>
+    <string name="error_session_save">Could not save the session on this device.</string>
+    <string name="login_error_ratelimit">Too many requests. Try again in a few minutes.</string>
+    <string name="login_pair_television_failed">The TV could not complete the request to Boosty.</string>
+    <string name="login_pair_not_confirmed">The TV did not confirm the sign-in.</string>
+    <string name="player_auto">Auto</string>
+    <string name="player_builtin">Built-in player</string>
+    <string name="player_other">Other player</string>
+    <string name="update_verification_failed">The update failed the signature or versionCode check. Download the APK from GitHub.</string>
+    <string name="update_in_progress_wait">Wait for the update download to finish.</string>
+    <string name="login_country_prefix">%1$s  %2$s  ▾</string>
+    <string name="update_download_progress">%1$d%%</string>
+</resources>
