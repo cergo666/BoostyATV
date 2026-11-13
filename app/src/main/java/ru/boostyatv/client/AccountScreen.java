@@ -19,9 +19,6 @@ final class AccountScreen {
         boolean isTv();
         BoostyApi api();
         void back();
-        void refreshFeed();
-        void showSettings();
-        void showAbout();
         void clearSession();
         <T> void readInBackground(Callable<T> request, Consumer<T> done, Consumer<Exception> failed);
     }
@@ -72,16 +69,7 @@ final class AccountScreen {
         profile.addView(text, new LinearLayout.LayoutParams(0, Ui.WRAP, 1));
         content.addView(profile, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
 
-        content.addView(ui.settingsSection(ui.context().getString(R.string.account_section_account)));
-        content.addView(ui.settingsRow(R.drawable.ic_refresh,
-            ui.context().getString(R.string.account_refresh_feed),
-            ui.context().getString(R.string.account_refresh_hint), "", host::refreshFeed), rowParams());
-        content.addView(ui.settingsRow(R.drawable.ic_settings,
-            ui.context().getString(R.string.account_settings),
-            ui.context().getString(R.string.account_settings_hint), "", host::showSettings), rowParams());
-        content.addView(ui.settingsRow(R.drawable.ic_info,
-            ui.context().getString(R.string.account_about),
-            ui.context().getString(R.string.settings_about_hint), "", host::showAbout), rowParams());
+        content.addView(ui.settingsSection(ui.context().getString(R.string.account_section_session)));
         content.addView(ui.settingsRow(R.drawable.ic_logout,
             ui.context().getString(R.string.account_logout),
             ui.context().getString(R.string.account_logout_hint), "", this::confirmLogout), rowParams());

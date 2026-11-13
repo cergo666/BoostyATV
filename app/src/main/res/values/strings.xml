@@ -245,10 +245,8 @@
     <string name="settings_connect_tv_hint">Sign in with a QR code</string>
     <string name="settings_about_hint">Version, author and project link</string>
     <string name="settings_check_updates_hint">Check for a new version</string>
-    <string name="account_section_account">Account</string>
     <string name="account_profile_loading">Loading profile…</string>
     <string name="account_profile_signed_in">Signed in to Boosty</string>
-    <string name="account_refresh_hint">Check for new posts</string>
-    <string name="account_settings_hint">Player, quality and theme</string>
     <string name="account_logout_hint">End the session on this device</string>
+    <string name="account_section_session">Session</string>
 </resources>

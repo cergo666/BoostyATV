@@ -18,6 +18,7 @@ import android.widget.TextView;
 
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -56,6 +57,7 @@ final class FeedScreen {
     private final Context context;
     private final boolean tv;
     private final RecyclerView list;
+    private final SwipeRefreshLayout refresh;
     private final GridLayoutManager layout;
     private final Adapter rows = new Adapter();
     private final LinearLayout header;
@@ -112,9 +114,17 @@ final class FeedScreen {
             if (right - left != oldRight - oldLeft) list.post(FeedScreen.this::updateColumns);
         });
         Ui.onAttach(list, () -> list.post(this::maybeLoadMore));
+
+        refresh = new SwipeRefreshLayout(context);
+        refresh.setColorSchemeColors(Ui.ACCENT);
+        refresh.setProgressBackgroundColorSchemeColor(ui.surface);
+        refresh.setDistanceToTriggerSync(ui.dp(72));
+        refresh.addView(list, new SwipeRefreshLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+        refresh.setOnRefreshListener(this::reload);
     }
 
     RecyclerView list() { return list; }
+    View container() { return refresh; }
     String author() { return author; }
     String title() { return title; }
     int scrollPosition() { return layout.findFirstVisibleItemPosition(); }
@@ -289,8 +299,7 @@ final class FeedScreen {
         String tags = String.join(",", selectedTags);
         host.readInBackground(() -> host.api().posts(author, offset, query, tags), page -> {
             if (requestGeneration != generation) return;
-            int previous = visible.size();
-            for (Post post : page.posts()) {
+            int previous = visible.size();            for (Post post : page.posts()) {
                 if (seen.add(post.id())) {
                     loaded.add(post);
                     if (matches(post)) visible.add(post);
@@ -298,6 +307,7 @@ final class FeedScreen {
             }
             next = requested.contains(page.next()) ? "" : page.next();
             loading = false;
+            refresh.setRefreshing(false);
             int added = visible.size() - previous;
             if (added > 0) rows.notifyItemRangeInserted(previous + 1, added);
             rows.notifyItemChanged(Math.max(0, rows.getItemCount() - 1));
@@ -312,6 +322,7 @@ final class FeedScreen {
             next = offset;
             loading = false;
             failed = true;
+            refresh.setRefreshing(false);
             rows.notifyItemChanged(Math.max(0, rows.getItemCount() - 1));
         });
     }

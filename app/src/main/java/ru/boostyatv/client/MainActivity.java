@@ -174,7 +174,7 @@ public final class MainActivity extends ComponentActivity
             feed.scrollTo(pendingFeedScroll);
             pendingFeedScroll = -1;
         }
-        screen.addView(feed.list(), new LinearLayout.LayoutParams(MATCH, 0, 1));
+        screen.addView(feed.container(), new LinearLayout.LayoutParams(MATCH, 0, 1));
         if (home && !tv) {
             screen.setTag(R.id.nav_tab, 0);
             screen.addView(ui.bottomNav(0, tab(0, () -> showFeed(null, null, true)),
