@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
+import android.util.Log;
 import org.json.JSONObject;
 
 import java.nio.ByteBuffer;
@@ -49,6 +50,8 @@ final class SessionStore {
             cipher.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128, iv));
             return new JSONObject(new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8));
         } catch (Exception e) {
+            // A transient KeyStore failure must not look like a silent sign-out.
+            Log.w("BoostyATV", "Session restore failed; clearing the stored session", e);
             clear();
             return null;
         }
@@ -61,12 +64,15 @@ final class SessionStore {
         byte[] iv = cipher.getIV();
         byte[] combined = ByteBuffer.allocate(iv.length + encrypted.length).put(iv).put(encrypted).array();
         if (!preferences.edit().putString("session", Base64.encodeToString(combined, Base64.NO_WRAP)).commit()) {
-            throw new BoostyApi.Problem("Не удалось сохранить сессию на устройстве.");
+            throw new BoostyApi.Problem(R.string.error_session_save);
         }
     }
 
+    @android.annotation.SuppressLint("ApplySharedPref")
     void clear() {
-        preferences.edit().remove("session").apply();
+        // Signing out must be durable before the screen is rebuilt, so this one
+        // intentionally writes synchronously instead of using apply().
+        preferences.edit().remove("session").commit();
     }
 
     private SecretKey key() throws Exception {

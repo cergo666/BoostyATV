@@ -11,30 +11,32 @@ import java.util.List;
 
 record Reactions(String selected, Map<String, Integer> counts) {
     enum Type {
-        LIKE("like", "👍", "Нравится"), DISLIKE("dislike", "👎", "Не нравится"),
-        FIRE("fire", "🔥", "Огонь"), HEART("heart", "❤️", "Сердце"), LAUGH("laugh", "😂", "Смешно"),
-        WONDER("wonder", "😮", "Удивление"), SAD("sad", "😢", "Грустно"), ANGRY("angry", "😡", "Злюсь"),
-        FUNNY("funny", "😜", "Забавно"), CHECK("check", "✅", "Согласен"),
-        THINKING("thinking", "🤔", "Думаю"), CLOWN("clown", "🤡", "Клоун"), MOAI("moai", "🗿", "Моаи"),
-        SWEARING("swearing", "🤬", "Возмущение"), APPLAUSE("applause", "👏", "Аплодисменты"),
-        CALL_ME("call-me", "🤙", "Позвони"), COLD("cold", "🥶", "Холодно"), EGGPLANT("eggplant", "🍆", "Баклажан"),
-        BLOWING_UP("blowing-up", "🤯", "Взрыв мозга"), SCREAM("scream", "😱", "Крик"),
-        CROWN("crown", "👑", "Корона"), DIAMOND("diamond", "💎", "Бриллиант"),
-        MELTING("melting", "🫠", "Таю"), MONEY("money", "💰", "Деньги"), NAUSEA("nausea", "🤢", "Тошнит"),
-        CONFETTI("confetti", "🎉", "Праздник"), BANANA("banana", "🍌", "Банан"),
-        PEACH("peach", "🍑", "Персик"), PIZZA("pizza", "🍕", "Пицца"),
-        SKULL("skull", "💀", "Череп"), LOVE("love", "😍", "Влюблён"), ROCKET("rocket", "🚀", "Ракета"),
-        SPLASH("splash", "💦", "Брызги"), LIGHTNING("lightning", "⚡", "Молния"),
-        CRY("cry", "😭", "Плачу"), FOLDED_HANDS("folded-hands", "🙏", "Спасибо");
+        LIKE("like", "👍"), DISLIKE("dislike", "👎"),
+        FIRE("fire", "🔥"), HEART("heart", "❤️"), LAUGH("laugh", "😂"),
+        WONDER("wonder", "😮"), SAD("sad", "😢"), ANGRY("angry", "😡"),
+        FUNNY("funny", "😜"), CHECK("check", "✅"),
+        THINKING("thinking", "🤔"), CLOWN("clown", "🤡"), MOAI("moai", "🗿"),
+        SWEARING("swearing", "🤬"), APPLAUSE("applause", "👏"),
+        CALL_ME("call-me", "🤙"), COLD("cold", "🥶"), EGGPLANT("eggplant", "🍆"),
+        BLOWING_UP("blowing-up", "🤯"), SCREAM("scream", "😱"),
+        CROWN("crown", "👑"), DIAMOND("diamond", "💎"),
+        MELTING("melting", "🫠"), MONEY("money", "💰"), NAUSEA("nausea", "🤢"),
+        CONFETTI("confetti", "🎉"), BANANA("banana", "🍌"),
+        PEACH("peach", "🍑"), PIZZA("pizza", "🍕"),
+        SKULL("skull", "💀"), LOVE("love", "😍"), ROCKET("rocket", "🚀"),
+        SPLASH("splash", "💦"), LIGHTNING("lightning", "⚡"),
+        CRY("cry", "😭"), FOLDED_HANDS("folded-hands", "🙏");
 
         final String code;
         final String emoji;
-        final String label;
 
-        Type(String code, String emoji, String label) {
+        Type(String code, String emoji) {
             this.code = code;
             this.emoji = emoji;
-            this.label = label;
+        }
+
+        String label(android.content.Context context) {
+            return context.getResources().getStringArray(R.array.reaction_labels)[ordinal()];
         }
     }
 

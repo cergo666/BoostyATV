@@ -13,13 +13,15 @@ import java.util.List;
 
 final class PlaybackOptions {
     static final int[] HEIGHTS = {0, 240, 360, 480, 720, 1080, 1440, 2160};
-    static final String[] QUALITY = {"Авто", "240p", "360p", "480p", "720p", "1080p", "1440p", "2160p"};
+    /** Quality table labels; the auto label is localized by {@link #qualityLabels(Context)}. */
+    static final String AUTO = "auto";
+    static final String[] QUALITY = {AUTO, "240p", "360p", "480p", "720p", "1080p", "1440p", "2160p"};
     static final String VIMU_RUSTORE = "net.gtvbox.vimuhd";
     enum App {
-        BUILT_IN("Встроенный плеер", ""), VLC("VLC", "org.videolan.vlc"),
+        BUILT_IN("", ""), VLC("VLC", "org.videolan.vlc"),
         MX_FREE("MX Player", "com.mxtech.videoplayer.ad"), MX_PRO("MX Player Pro", "com.mxtech.videoplayer.pro"),
         JUST_PLUS("Just+ Player", "com.justplus.player"), VIMU("ViMu Media Player", "net.gtvbox.videoplayer"),
-        OTHER("Другой плеер", "");
+        OTHER("", "");
 
         final String label;
         final String packageName;
@@ -27,6 +29,14 @@ final class PlaybackOptions {
         App(String label, String packageName) {
             this.label = label;
             this.packageName = packageName;
+        }
+
+        String label(Context context) {
+            return switch (this) {
+                case BUILT_IN -> context.getString(R.string.player_builtin);
+                case OTHER -> context.getString(R.string.player_other);
+                default -> label;
+            };
         }
 
         Intent intent(Post.Source source, String title, long position) {
@@ -69,13 +79,19 @@ final class PlaybackOptions {
         }
     }
 
+    static String[] qualityLabels(Context context) {
+        String[] labels = QUALITY.clone();
+        labels[0] = context.getString(R.string.player_auto);
+        return labels;
+    }
+
     static LinkedHashMap<String, String> qualityVariants(List<Post.Source> sources) {
         LinkedHashMap<String, String> variants = new LinkedHashMap<>();
         for (Post.Source source : sources) {
             int height = heightOf(source.type());
             if (height > 0) variants.putIfAbsent(height + "p", source.url());
             else if (source.type().contains("hls") || source.type().contains("dash")) {
-                variants.putIfAbsent("Авто", source.url());
+                variants.putIfAbsent(AUTO, source.url());
             }
         }
         return variants;
@@ -85,6 +101,14 @@ final class PlaybackOptions {
 
     PlaybackOptions(Context context) {
         preferences = context.getSharedPreferences("playback_options", Context.MODE_PRIVATE);
+    }
+
+    boolean oled() {
+        return preferences.getBoolean("oled_theme", false);
+    }
+
+    void setOled(boolean enabled) {
+        preferences.edit().putBoolean("oled_theme", enabled).apply();
     }
 
     int qualityIndex() {

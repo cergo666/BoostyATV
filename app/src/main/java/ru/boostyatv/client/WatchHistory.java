@@ -9,8 +9,21 @@ import java.util.List;
 final class WatchHistory {
     private static final String PENDING = ".pending";
     private static final String EXTERNAL = ".external";
+    private static final String ORDER = "order";
+    private static final int MAX_ENTRIES = 500;
     private static final Object LOCK = new Object();
     record Pending(String id, long position) {}
+    record Order(List<String> ids, List<String> evicted) {}
+
+    static Order nextOrder(String raw, String id, int limit) {
+        List<String> ids = new ArrayList<>();
+        if (!raw.isEmpty()) java.util.Collections.addAll(ids, raw.split(","));
+        ids.removeIf(id::equals);
+        ids.add(id);
+        List<String> evicted = new ArrayList<>();
+        while (ids.size() > limit) evicted.add(ids.remove(0));
+        return new Order(ids, evicted);
+    }
 
     record Progress(long position, long duration) {
         long resume() { return duration > 0 && position >= duration - 1000 ? 0 : position; }
@@ -36,6 +49,7 @@ final class WatchHistory {
     void save(Post.Block video, long position, long duration) {
         if (video.videoId().isEmpty()) return;
         synchronized (LOCK) {
+            touch(video.videoId());
             preferences.edit().remove(video.videoId() + EXTERNAL)
                 .putLong(video.videoId() + ".position", position)
                 .putLong(video.videoId() + ".duration", duration)
@@ -53,10 +67,24 @@ final class WatchHistory {
     void saveExternal(String id, String nonce, Progress progress) {
         synchronized (LOCK) {
             if (nonce == null || nonce.isEmpty() || !nonce.equals(preferences.getString(id + EXTERNAL, ""))) return;
+            touch(id);
             preferences.edit().putLong(id + ".position", progress.position())
                 .putLong(id + ".duration", progress.duration())
                 .putLong(id + PENDING, progress.position()).apply();
         }
+    }
+
+    private void touch(String id) {
+        String raw = preferences.getString(ORDER, "");
+        if (raw.equals(id) || raw.endsWith("," + id)) return;
+        Order order = nextOrder(raw, id, MAX_ENTRIES);
+        android.content.SharedPreferences.Editor editor = preferences.edit()
+            .putString(ORDER, String.join(",", order.ids()));
+        for (String old : order.evicted()) {
+            editor.remove(old + ".position").remove(old + ".duration")
+                .remove(old + PENDING).remove(old + EXTERNAL);
+        }
+        editor.apply();
     }
 
     void listen(SharedPreferences.OnSharedPreferenceChangeListener listener) {

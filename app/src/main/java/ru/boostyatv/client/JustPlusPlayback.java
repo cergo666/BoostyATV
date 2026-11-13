@@ -33,7 +33,8 @@ public final class JustPlusPlayback extends BroadcastReceiver {
         ArrayList<Bundle> qualities = new ArrayList<>();
         PlaybackOptions.qualityVariants(video.sources()).forEach((name, source) -> {
             Bundle quality = new Bundle();
-            quality.putString("label", name);
+            quality.putString("label", PlaybackOptions.AUTO.equals(name)
+                ? context.getString(R.string.player_auto) : name);
             quality.putString("uri", source);
             quality.putBoolean("selected", source.equals(url));
             qualities.add(quality);

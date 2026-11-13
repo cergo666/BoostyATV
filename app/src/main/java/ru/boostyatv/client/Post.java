@@ -1,10 +1,12 @@
 package ru.boostyatv.client;
 
-import android.net.Uri;
+import android.content.Context;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -12,6 +14,7 @@ import java.util.Locale;
 
 record Post(String id, String title, String author, String slug, long published, boolean allowed,
             String cover, List<Block> blocks, boolean commentsDenied, boolean reactionsDisabled, Reactions reactions) {
+    static final String UNTITLED = "";
     record Block(String kind, String text, String image, List<Source> sources,
                  String videoId, long positionMs, long durationMs) {
         Block(String kind, String text, String image, List<Source> sources) {
@@ -22,6 +25,10 @@ record Post(String id, String title, String author, String slug, long published,
 
     boolean hasVideo() {
         return blocks.stream().anyMatch(block -> !block.sources().isEmpty());
+    }
+
+    String displayTitle(Context context) {
+        return title.isEmpty() ? context.getString(R.string.post_untitled) : title;
     }
 
     static List<Post> parseList(JSONArray items) {
@@ -52,7 +59,7 @@ record Post(String id, String title, String author, String slug, long published,
         String title = string(item, "title").trim();
         if (title.trim().isEmpty()) {
             title = blocks.stream().filter(block -> block.kind().equals("text")).map(Block::text)
-                .filter(value -> !value.trim().isEmpty()).findFirst().orElse("Публикация Boosty");
+                .filter(value -> !value.trim().isEmpty()).findFirst().orElse(UNTITLED);
             if (title.codePointCount(0, title.length()) > 95) {
                 title = title.substring(0, title.offsetByCodePoints(0, 92)).trim() + "…";
             }
@@ -150,8 +157,19 @@ record Post(String id, String title, String author, String slug, long published,
 
     static String https(String value) {
         if (value.isEmpty()) return "";
-        Uri uri = Uri.parse(value);
-        return "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null && uri.getUserInfo() == null
-            ? value : "";
+        try {
+            URI uri = new URI(value);
+            boolean valid = "https".equalsIgnoreCase(uri.getScheme()) && uri.getUserInfo() == null
+                && (uri.getHost() != null || lenientHttps(value));
+            return valid ? value : "";
+        } catch (URISyntaxException e) {
+            // Android's Uri.parse accepts international host names and paths; keep those
+            // URLs, but still reject credentials and whitespace in the authority.
+            return lenientHttps(value) ? value : "";
+        }
+    }
+
+    private static boolean lenientHttps(String value) {
+        return value.matches("(?i)^https://[^/@\\s]+([/?#]\\S*)?$");
     }
 }

@@ -64,7 +64,7 @@ final class BoostyApi {
                 form("phone", phone, "device_id", deviceId, "device_os", "web"));
             JSONObject code = payload.getJSONObject("data").getJSONObject("phoneCode");
             String id = Post.string(code, "code");
-            if (id.trim().isEmpty()) throw new Problem("Boosty не подтвердил отправку кода.");
+            if (id.trim().isEmpty()) throw new Problem(R.string.login_error_not_sent);
             return new Challenge(phone, id, Post.string(code, "sentTransport"));
         } catch (HttpError e) {
             throw phoneError(e, false);
@@ -83,9 +83,9 @@ final class BoostyApi {
 
     synchronized void importWebSession(WebSession imported) throws Exception {
         if (!imported.device().matches("[A-Fa-f0-9-]{36}") || imported.access().isEmpty()
-            || imported.refresh().isEmpty()) throw new Problem("Boosty не вернул полную сессию.");
+            || imported.refresh().isEmpty()) throw new Problem(R.string.error_session_incomplete);
         JSONObject identity = requestForDevice("GET", "/v1/user/current", imported.access(), null, imported.device());
-        if (identity.optLong("id") <= 0) throw new Problem("Не удалось подтвердить аккаунт Boosty.");
+        if (identity.optLong("id") <= 0) throw new Problem(R.string.error_account_unconfirmed);
         JSONObject next = imported.json();
         store.save(next);
         session = next;
@@ -101,10 +101,10 @@ final class BoostyApi {
     synchronized void importSharedAccess(AccessSession imported) throws Exception {
         if (!imported.device().matches("[A-Fa-f0-9-]{36}") || imported.access().isEmpty()
             || imported.expiry() <= System.currentTimeMillis() / 1000L) {
-            throw new Problem("На телефоне нет действующей сессии Boosty.");
+            throw new Problem(R.string.error_phone_session_missing);
         }
         JSONObject identity = requestForDevice("GET", "/v1/user/current", imported.access(), null, imported.device());
-        if (identity.optLong("id") <= 0) throw new Problem("Не удалось подтвердить аккаунт Boosty.");
+        if (identity.optLong("id") <= 0) throw new Problem(R.string.error_account_unconfirmed);
         JSONObject next = new JSONObject().put("access", imported.access()).put("expiry", imported.expiry())
             .put("device", imported.device());
         store.save(next);
@@ -263,7 +263,7 @@ final class BoostyApi {
     private void refresh() throws Exception {
         if (session.optString("refresh").isEmpty()) {
             signOut();
-            throw new SignedOut("Вход с телефона истёк. Подключите телевизор по новому QR-коду.");
+            throw new SignedOut(R.string.error_phone_session_expired);
         }
         String sessionDevice = session.optString("device", deviceId);
         try {
@@ -282,7 +282,7 @@ final class BoostyApi {
         String refresh = Post.string(data, "refresh_token");
         long seconds = data.optLong("expires_in");
         if (access.trim().isEmpty() || refresh.trim().isEmpty() || seconds <= 0) {
-            throw new Problem("Boosty вернул неполные данные для входа.");
+            throw new Problem(R.string.error_login_incomplete);
         }
         JSONObject next = new JSONObject()
             .put("access", access).put("refresh", refresh)
@@ -372,24 +372,34 @@ final class BoostyApi {
 
     private static Problem phoneError(HttpError error, boolean confirmation) {
         return switch (error.code) {
-            case "invalid_check" -> new Problem("Boosty запросил CAPTCHA. Сейчас вход с этого устройства недоступен.");
-            case "denied_phone_prefix" -> new Problem("Boosty не поддерживает этот код страны.");
-            case "denied_phone_registration" -> new Problem("Привяжите номер к своему аккаунту на сайте Boosty.");
-            case "sms_gate_ratelimit" -> new Problem("Слишком много запросов. Попробуйте через несколько минут.");
+            case "invalid_check" -> new Problem(R.string.login_error_captcha);
+            case "denied_phone_prefix" -> new Problem(R.string.login_error_unsupported_prefix);
+            case "denied_phone_registration" -> new Problem(R.string.login_error_not_registered);
+            case "sms_gate_ratelimit" -> new Problem(R.string.login_error_ratelimit);
             default -> error.status == 400 || error.status == 401 || error.status == 422
-                ? new Problem(confirmation ? "Код неверен или истёк. Проверьте его или запросите новый."
-                    : "Boosty не принял номер. Проверьте код страны и номер.")
+                ? new Problem(confirmation ? R.string.login_error_code_invalid
+                    : R.string.login_error_invalid_number)
                 : error;
         };
     }
 
     static class Problem extends Exception {
-        Problem(String message) { super(message); }
+        final int message;
+        final Object[] args;
+
+        Problem(int message, Object... args) {
+            this.message = message;
+            this.args = args;
+        }
+
+        String resolve(android.content.Context context) {
+            return args.length == 0 ? context.getString(message) : context.getString(message, args);
+        }
     }
 
     static final class SignedOut extends Problem {
-        SignedOut() { super("Сессия истекла. Войдите снова."); }
-        SignedOut(String message) { super(message); }
+        SignedOut() { super(R.string.error_session_expired); }
+        SignedOut(int message) { super(message); }
     }
 
     private static final class HttpError extends Problem {
@@ -397,8 +407,7 @@ final class BoostyApi {
         final String code;
 
         HttpError(int status, String code) {
-            super(status == 429 ? "Слишком много запросов. Попробуйте позже."
-                : "Boosty не выполнил запрос (HTTP " + status + ").");
+            super(status == 429 ? R.string.error_too_many_requests : R.string.error_http, status);
             this.status = status;
             this.code = code;
         }

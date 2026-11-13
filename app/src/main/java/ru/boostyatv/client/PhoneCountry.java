@@ -2,6 +2,7 @@ package ru.boostyatv.client;
 
 import android.content.Context;
 import android.telephony.PhoneNumberUtils;
+import android.util.Log;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -17,10 +18,17 @@ import java.util.Locale;
 
 record PhoneCountry(String region, String prefix, String name, String originalName) {
     private static final Locale RUSSIAN = Locale.forLanguageTag("ru");
-    static final PhoneCountry RUSSIA = new PhoneCountry("RU", "+7", "Россия", "Russia");
+    static final PhoneCountry RUSSIA = new PhoneCountry("RU", "+7", "Russia", "Russia");
+
+    PhoneCountry localized(Locale display) {
+        if (region.isEmpty()) return this;
+        String name = new Locale("", region).getDisplayCountry(display);
+        return name.equals(region) || name.isEmpty() ? this : new PhoneCountry(region, prefix, name, originalName);
+    }
 
     static List<PhoneCountry> load(Context context) {
         List<PhoneCountry> countries = new ArrayList<>();
+        Locale display = context.getResources().getConfiguration().getLocales().get(0);
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
             context.getResources().openRawResource(R.raw.phone_codes), StandardCharsets.UTF_8))) {
             StringBuilder text = new StringBuilder();
@@ -33,15 +41,16 @@ record PhoneCountry(String region, String prefix, String name, String originalNa
                 String prefix = row.getString("dialCode");
                 if (!iso.matches("[A-Z]{2}") || !prefix.matches("\\+[1-9][0-9]{0,4}")) continue;
                 String originalName = row.getString("name");
-                String localizedName = new Locale("", iso).getDisplayCountry(RUSSIAN);
+                String localizedName = new Locale("", iso).getDisplayCountry(display);
                 countries.add(new PhoneCountry(iso, prefix,
                     localizedName.equals(iso) || localizedName.isEmpty() ? originalName : localizedName, originalName));
             }
-        } catch (IOException | org.json.JSONException ignored) {
+        } catch (IOException | org.json.JSONException e) {
             // The form also accepts complete international numbers if the list is unavailable.
+            Log.w("BoostyATV", "Phone code list is unavailable; using the fallback entry", e);
         }
-        if (countries.isEmpty()) countries.add(RUSSIA);
-        countries.sort(Comparator.comparing(PhoneCountry::name, Collator.getInstance(RUSSIAN)));
+        if (countries.isEmpty()) countries.add(RUSSIA.localized(display));
+        countries.sort(Comparator.comparing(PhoneCountry::name, Collator.getInstance(display)));
         return countries;
     }
 

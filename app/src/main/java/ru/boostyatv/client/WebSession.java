@@ -7,13 +7,13 @@ import java.net.URLDecoder;
 record WebSession(String access, String refresh, long expiry, String device) {
     static WebSession parse(String auth, String device) throws Exception {
         if (auth.length() > 32_768 || !device.matches("[A-Fa-f0-9-]{36}")) {
-            throw new BoostyApi.Problem("Сайт ещё не завершил вход в Boosty.");
+            throw new BoostyApi.Problem(R.string.login_web_session_incomplete);
         }
         JSONObject data = new JSONObject(auth.startsWith("{") ? auth : URLDecoder.decode(auth, "UTF-8"));
         String access = first(data, "accessToken", "access_token");
         String refresh = first(data, "refreshToken", "refresh_token");
         if (access.isEmpty() || refresh.isEmpty()) {
-            throw new BoostyApi.Problem("Сайт ещё не завершил вход в Boosty.");
+            throw new BoostyApi.Problem(R.string.login_web_session_incomplete);
         }
         String time = first(data, "expiresAt", "expires_at", "expiresIn", "expires_in");
         long expiry = 0;

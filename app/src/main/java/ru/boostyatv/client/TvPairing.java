@@ -1,8 +1,10 @@
 package ru.boostyatv.client;
 
+import android.content.res.Resources;
 import android.net.Uri;
 import android.os.SystemClock;
 import android.util.Base64;
+import android.util.Log;
 import org.json.JSONObject;
 
 import java.io.DataInputStream;
@@ -36,11 +38,17 @@ final class TvPairing {
         private final ServerSocket listener;
         private final byte[] key = new byte[32];
         private final Handler handler;
+        private final Resources resources;
         private final long deadline = SystemClock.elapsedRealtime() + LIFETIME_MS;
 
         Receiver(InetAddress address, Handler handler) throws IOException {
+            this(address, handler, null);
+        }
+
+        Receiver(InetAddress address, Handler handler, Resources resources) throws IOException {
             RANDOM.nextBytes(key);
             this.handler = handler;
+            this.resources = resources;
             listener = new ServerSocket();
             try {
                 listener.bind(new InetSocketAddress(address, 0), 3);
@@ -61,7 +69,8 @@ final class TvPairing {
         boolean await() {
             Set<String> used = new HashSet<>();
             try {
-                while (!listener.isClosed() && SystemClock.elapsedRealtime() < deadline && used.size() < 24) {
+                while (!Thread.currentThread().isInterrupted() && !listener.isClosed()
+                    && SystemClock.elapsedRealtime() < deadline && used.size() < 24) {
                     try (Socket socket = listener.accept()) {
                         socket.setSoTimeout(3000);
                         JSONObject input = read(socket, key, "request");
@@ -75,9 +84,11 @@ final class TvPairing {
                             response = handler.handle(action, input).put("ok", true);
                             finished = "confirm".equals(action) || "web".equals(action) || "access".equals(action);
                         } catch (BoostyApi.Problem e) {
-                            response = new JSONObject().put("error", e.getMessage());
+                            response = errorResponse(e);
                         } catch (Exception e) {
-                            response = new JSONObject().put("error", "Телевизор не смог завершить запрос к Boosty.");
+                            response = resources != null
+                                ? new JSONObject().put("error_key", "login_pair_television_failed")
+                                : new JSONObject().put("error_id", R.string.login_pair_television_failed);
                         }
                         try {
                             write(socket, key, "response", response.put("id", id));
@@ -87,8 +98,9 @@ final class TvPairing {
                         if (finished) return true;
                     } catch (SocketTimeoutException ignored) {
                         // Recheck the expiry after an idle accept or read.
-                    } catch (Exception ignored) {
+                    } catch (Exception e) {
                         // Invalid packets do not change the sign-in state.
+                        Log.d("BoostyATV", "Rejected an invalid pairing frame", e);
                     }
                 }
                 return false;
@@ -100,18 +112,35 @@ final class TvPairing {
         @Override public void close() {
             try { listener.close(); } catch (IOException ignored) {}
         }
+
+        private JSONObject errorResponse(BoostyApi.Problem problem) throws org.json.JSONException {
+            if (resources != null) {
+                try {
+                    return new JSONObject().put("error_key", resources.getResourceEntryName(problem.message));
+                } catch (Resources.NotFoundException ignored) {
+                    // Fall back to the numeric id for older peers.
+                }
+            }
+            return new JSONObject().put("error_id", problem.message);
+        }
     }
 
     static final class Sender {
         private final InetSocketAddress address;
         private final byte[] key;
+        private final Resources resources;
 
-        private Sender(InetSocketAddress address, byte[] key) {
+        private Sender(InetSocketAddress address, byte[] key, Resources resources) {
             this.address = address;
             this.key = key;
+            this.resources = resources;
         }
 
         static Sender parse(String link) throws Exception {
+            return parse(link, null);
+        }
+
+        static Sender parse(String link, Resources resources) throws Exception {
             Uri uri = Uri.parse(link);
             if (!"boostyatv".equals(uri.getScheme()) || !"pair".equals(uri.getAuthority())
                 || !"/v1".equals(uri.getPath())) throw new IOException("Invalid invitation");
@@ -123,7 +152,7 @@ final class TvPairing {
             if (port < 1024 || port > 65535) throw new IOException("Invalid port");
             byte[] key = Base64.decode(uri.getQueryParameter("key"), BASE64_FLAGS);
             if (key.length != 32) throw new IOException("Invalid key");
-            return new Sender(new InetSocketAddress(ip, port), key);
+            return new Sender(new InetSocketAddress(ip, port), key, resources);
         }
 
         BoostyApi.Challenge sendCode(String phone) throws Exception {
@@ -144,6 +173,7 @@ final class TvPairing {
                 .put("expiry", session.expiry()).put("device", session.device()));
         }
 
+        @android.annotation.SuppressLint("DiscouragedApi")
         private JSONObject send(String action, JSONObject input) throws Exception {
             String id = UUID.randomUUID().toString();
             try (Socket socket = new Socket()) {
@@ -152,13 +182,23 @@ final class TvPairing {
                 write(socket, key, "request", input.put("action", action).put("id", id));
                 JSONObject result = read(socket, key, "response");
                 if (!id.equals(result.getString("id"))) throw new IOException("Response mismatch");
-                if (!result.optBoolean("ok")) throw new BoostyApi.Problem(result.optString("error",
-                    "Телевизор не подтвердил вход."));
+                if (!result.optBoolean("ok")) {
+                    int message = 0;
+                    String key = result.optString("error_key", "");
+                    if (!key.isEmpty() && resources != null) {
+                        String pkg = resources.getResourcePackageName(R.string.login_pair_not_confirmed);
+                        message = resources.getIdentifier(key, "string", pkg);
+                    } else if (resources == null) {
+                        message = result.optInt("error_id", 0);
+                    }
+                    throw new BoostyApi.Problem(message == 0
+                        ? R.string.login_pair_not_confirmed : message);
+                }
                 return result;
             } catch (BoostyApi.Problem e) {
                 throw e;
             } catch (Exception e) {
-                throw new BoostyApi.Problem("Телевизор не отвечает. Проверьте общую сеть и откройте новый QR-код.");
+                throw new BoostyApi.Problem(R.string.login_pair_network);
             }
         }
     }
