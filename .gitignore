@@ -1,8 +1,24 @@
+# Build output
 .gradle/
-.idea/
 **/build/
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Local configuration and secrets
 local.properties
-*.har
-*.har.*
+keystore.properties
 *.jks
 *.keystore
+
+# Analysis and capture artefacts
+*.har
+*.har.*
+.codegraph/
+*.hprof
+
+# OS files
+.DS_Store
+Thumbs.db

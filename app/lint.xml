@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!--
+      local.properties is machine specific and gitignored; Android Studio and
+      Gradle write and validate it themselves. Paths are relative to this file.
+    -->
+    <issue id="PropertyEscape">
+        <ignore path="../local.properties" />
+    </issue>
+</lint>

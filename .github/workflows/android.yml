@@ -17,17 +17,29 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
           java-version: '21'
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-provider: basic
-      - uses: android-actions/setup-android@v4.0.4
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           packages: 'platforms;android-37.0 build-tools;36.0.0'
           log-accepted-android-sdk-licenses: 'false'
+      - name: Unit tests
+        run: bash gradlew :app:testDebugUnitTest --parallel
       - name: Build and lint
-        run: bash gradlew :app:assembleRelease :app:lintDebug --parallel
+        run: bash gradlew :app:assembleDebug :app:assembleRelease :app:lintDebug --parallel
+      - name: Upload build reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-build
+          path: |
+            app/build/outputs/apk/**/*.apk
+            app/build/reports/lint-results-debug.*
+            app/build/reports/tests/**
+          if-no-files-found: warn

@@ -1,6 +1,25 @@
 plugins {
-    id 'com.android.application' version '9.4.1'
+    alias(libs.plugins.android.application)
 }
+
+def keystoreProperties = new Properties()
+def keystoreFile = rootProject.file('keystore.properties')
+if (keystoreFile.exists()) {
+    keystoreFile.withInputStream { keystoreProperties.load(it) }
+}
+def signingStore = System.getenv('BOOSTY_KEYSTORE') ?: keystoreProperties.getProperty('storeFile')
+def signingStorePassword = System.getenv('BOOSTY_KEYSTORE_PASSWORD') ?: keystoreProperties.getProperty('storePassword')
+def signingKeyAlias = System.getenv('BOOSTY_KEY_ALIAS') ?: keystoreProperties.getProperty('keyAlias')
+def signingKeyPassword = System.getenv('BOOSTY_KEY_PASSWORD') ?: keystoreProperties.getProperty('keyPassword')
+def hasReleaseSigning = signingStore != null && signingStorePassword != null
+    && signingKeyAlias != null && signingKeyPassword != null
+def versionCodeOverride = providers.gradleProperty('versionCode').orNull
+def versionNameOverride = providers.gradleProperty('versionName').orNull
+def baseVersionName = versionNameOverride ?: '1.1.0'
+def versionMatcher = baseVersionName =~ /^(\d+)\.(\d+)\.(\d+)/
+def baseVersionCode = versionMatcher.find()
+    ? versionMatcher.group(1).toInteger() * 1000000 + versionMatcher.group(2).toInteger() * 1000 + versionMatcher.group(3).toInteger()
+    : 1
 
 android {
     namespace 'ru.boostyatv.client'
@@ -10,9 +29,38 @@ android {
         applicationId 'ru.boostyatv.client'
         minSdk 26
         targetSdk 36
-        versionCode 9
-        versionName '1.0.1'
+        versionCode versionCodeOverride == null ? baseVersionCode : versionCodeOverride.toInteger()
+        versionName baseVersionName
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile rootProject.file(signingStore)
+                storePassword signingStorePassword
+                keyAlias signingKeyAlias
+                keyPassword signingKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+        release {
+            if (hasReleaseSigning) signingConfig signingConfigs.release
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
     }
 
     buildFeatures {
@@ -26,16 +74,17 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.activity:activity:1.10.1'
-    implementation 'androidx.recyclerview:recyclerview:1.3.0'
-    compileOnly 'androidx.annotation:annotation:1.9.1'
-    def media3 = '1.8.0'
-    implementation "androidx.media3:media3-exoplayer:$media3"
-    implementation "androidx.media3:media3-exoplayer-hls:$media3"
-    implementation "androidx.media3:media3-exoplayer-dash:$media3"
-    implementation "androidx.media3:media3-ui:$media3"
-    implementation "androidx.media3:media3-session:$media3"
-    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test:runner:1.5.2'
+    implementation libs.androidx.activity
+    implementation libs.androidx.recyclerview
+    compileOnly libs.androidx.annotation
+    implementation libs.androidx.media3.exoplayer
+    implementation libs.androidx.media3.exoplayer.hls
+    implementation libs.androidx.media3.exoplayer.dash
+    implementation libs.androidx.media3.ui
+    implementation libs.androidx.media3.session
+    implementation libs.zxing.embedded
+    testImplementation libs.junit4
+    testImplementation libs.json
+    androidTestImplementation libs.androidx.test.junit
+    androidTestImplementation libs.androidx.test.runner
 }
