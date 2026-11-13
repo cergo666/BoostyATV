@@ -27,6 +27,17 @@ import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public final class BoostyProtocolTest {
+    @Test public void reactionLabelsCoverEveryReactionType() throws Exception {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        String[] labels = context.getResources().getStringArray(R.array.reaction_labels);
+        assertEquals(Reactions.Type.values().length, labels.length);
+        for (Reactions.Type type : Reactions.Type.values()) {
+            assertEquals(type, Reactions.allowed(new JSONObject()
+                .put("allowedReactionList", new JSONArray().put(type.code))).get(0));
+            assertFalse(type.label(context).isEmpty());
+        }
+    }
+
     @Test public void phoneChallengeCreatesSessionAndRefreshesItForTheFeed() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         SessionStore store = new SessionStore(context.getSharedPreferences("protocol-test", Context.MODE_PRIVATE));
@@ -308,9 +319,9 @@ public final class BoostyProtocolTest {
     }
 
     @Test public void playbackTimestampAndWebSessionAreParsedWithoutStartingPlayback() throws Exception {
-        assertEquals(341_000L, MainActivity.parseTimestamp("5:41"));
-        assertEquals(3_661_000L, MainActivity.parseTimestamp("1:01:01"));
-        assertEquals(-1L, MainActivity.parseTimestamp("12:60"));
+        assertEquals(341_000L, TimeFormat.parse("5:41"));
+        assertEquals(3_661_000L, TimeFormat.parse("1:01:01"));
+        assertEquals(-1L, TimeFormat.parse("12:60"));
         assertEquals(50, new WatchHistory.Progress(30_000, 60_000).percentage());
         assertEquals(0L, new WatchHistory.Progress(60_000, 60_000).resume());
         Post.Source source = new Post.Source("high", "https://media.example.com/video.mp4");
@@ -334,7 +345,7 @@ public final class BoostyProtocolTest {
         Intent just = PlaybackOptions.App.JUST_PLUS.intent(hls, "Video", 341_000L);
         assertEquals("com.justplus.player", just.getPackage());
         var qualities = PlaybackOptions.qualityVariants(java.util.Arrays.asList(hls, mp4));
-        assertEquals(hls.url(), qualities.get("Авто"));
+        assertEquals(hls.url(), qualities.get("auto"));
         assertEquals(mp4.url(), qualities.get("720p"));
         assertEquals(342_123L, JustPlusPlayback.progress(new Intent().putExtra("end_by", "user")
             .putExtra("index", 0).putExtra("position_ms", 342_123L), 600_000).position());
@@ -391,7 +402,8 @@ public final class BoostyProtocolTest {
     }
     @Test public void appUpdateChecksTheVersionAndUsesOnlyTheOfficialApk() throws Exception {
         String url = AppRelease.PROJECT + "/releases/download/v1.10.0/BoostyATV.apk";
-        JSONObject asset = new JSONObject().put("name", "BoostyATV.apk").put("browser_download_url", url);
+        JSONObject asset = new JSONObject().put("name", "BoostyATV.apk").put("browser_download_url", url)
+            .put("digest", "sha256:" + "d".repeat(64));
         JSONObject release = new JSONObject().put("tag_name", "v1.10.0").put("body", "- Исправления")
             .put("assets", new JSONArray().put(asset));
         AppRelease update = AppRelease.parse(release);
