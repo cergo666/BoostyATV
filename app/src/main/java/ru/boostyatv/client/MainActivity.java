@@ -59,7 +59,7 @@ public final class MainActivity extends ComponentActivity
     private UpdateController updates;
     private boolean reopenSettings;
     private boolean foreground;
-    private final Artwork artwork = new Artwork();
+    private Artwork artwork;
     private final Navigator navigator = new Navigator();
     private int sessionEpoch;
     private BoostyApi api;
@@ -86,6 +86,7 @@ public final class MainActivity extends ComponentActivity
 
     @Override public void onCreate(Bundle savedState) {
         super.onCreate(savedState);
+        artwork = new Artwork(this);
         UiModeManager modes = getSystemService(UiModeManager.class);
         tv = modes.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
         api = new BoostyApi(new SessionStore(this));
@@ -268,7 +269,7 @@ public final class MainActivity extends ComponentActivity
         playerScreen.destroy();
         watchHistory.stopListening(progressChanged);
         network.shutdown();
-        artwork.close();
+        if (artwork != null) artwork.close();
         super.onDestroy();
     }
 
