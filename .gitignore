@@ -17,6 +17,7 @@ keystore.properties
 *.har
 *.har.*
 .codegraph/
+.opencode/
 *.hprof
 
 # OS files
