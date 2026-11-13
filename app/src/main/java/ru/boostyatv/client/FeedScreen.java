@@ -124,40 +124,36 @@ final class FeedScreen {
     private void buildHeader() {
         if (author == null) {
             LinearLayout filters = ui.row();
-            TextView all = ui.button(context.getString(R.string.feed_all_posts), true, () -> switchFilter(false));
-            TextView videos = ui.button(context.getString(R.string.feed_videos_only), false, () -> switchFilter(true));
+            TextView all = ui.chip(context.getString(R.string.feed_all_posts), () -> switchFilter(false));
+            TextView videos = ui.chip(context.getString(R.string.feed_videos_only), () -> switchFilter(true));
             all.setSelected(true);
-            filters.addView(all);
-            LinearLayout.LayoutParams second = new LinearLayout.LayoutParams(Ui.WRAP, Ui.WRAP);
+            filters.addView(all, new LinearLayout.LayoutParams(Ui.WRAP, ui.dp(36)));
+            LinearLayout.LayoutParams second = new LinearLayout.LayoutParams(Ui.WRAP, ui.dp(36));
             second.leftMargin = ui.dp(8);
             filters.addView(videos, second);
             all.setOnClickListener(view -> {
                 if (host.busy() || !videosOnly) return;
-                all.setBackground(ui.control(Ui.ACCENT, 0xffffc3a7, 12));
-                all.setTextColor(ui.background);
                 all.setSelected(true);
-                videos.setBackground(ui.control(ui.surface, ui.focusedSurface, 12));
-                videos.setTextColor(Ui.INK);
                 videos.setSelected(false);
                 switchFilter(false);
             });
             videos.setOnClickListener(view -> {
                 if (host.busy() || videosOnly) return;
-                videos.setBackground(ui.control(Ui.ACCENT, 0xffffc3a7, 12));
-                videos.setTextColor(ui.background);
                 videos.setSelected(true);
-                all.setBackground(ui.control(ui.surface, ui.focusedSurface, 12));
-                all.setTextColor(Ui.INK);
                 all.setSelected(false);
                 switchFilter(true);
             });
             header.addView(filters);
         } else {
             LinearLayout filters = ui.row();
-            ui.weighted(filters, ui.button(context.getString(R.string.feed_channel_search), false, this::searchChannel),
-                0, ui.dp(44));
-            ui.weighted(filters, ui.button(context.getString(R.string.feed_channel_tags), false, this::chooseTags),
-                8, ui.dp(44));
+            LinearLayout search = ui.actionChip(R.drawable.ic_search,
+                context.getString(R.string.feed_channel_search), this::searchChannel);
+            LinearLayout tags = ui.actionChip(R.drawable.ic_tag,
+                context.getString(R.string.feed_channel_tags), this::chooseTags);
+            filters.addView(search, new LinearLayout.LayoutParams(Ui.WRAP, ui.dp(40)));
+            LinearLayout.LayoutParams tagParams = new LinearLayout.LayoutParams(Ui.WRAP, ui.dp(40));
+            tagParams.leftMargin = ui.dp(8);
+            filters.addView(tags, tagParams);
             header.addView(filters);
             filterSummary = ui.label("", 14, Ui.MUTED, false);
             filterSummary.setVisibility(View.GONE);
@@ -377,8 +373,8 @@ final class FeedScreen {
             this.host = host;
             this.ui = ui;
             setOrientation(VERTICAL);
-            setPadding(ui.dp(2), ui.dp(2), ui.dp(2), ui.dp(2));
-            setBackground(ui.control(ui.surface, ui.focusedSurface, 14));
+            setPadding(ui.dp(3), ui.dp(3), ui.dp(3), ui.dp(3));
+            setBackground(ui.control(ui.surface, ui.focusedSurface, 18));
             setClipToOutline(true);
             if (host.isTv()) {
                 StateListDrawable outline = new StateListDrawable();
@@ -389,7 +385,7 @@ final class FeedScreen {
             }
 
             FrameLayout cover = ui.videoPreview(host.isTv());
-            cover.setBackground(ui.shape(0xff302633, 12, 0));
+            cover.setBackground(ui.shape(0xff302633, 14, 0));
             cover.setClipToOutline(true);
             image = new ImageView(getContext());
             image.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -414,7 +410,7 @@ final class FeedScreen {
             addView(cover, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
 
             LinearLayout meta = ui.column();
-            meta.setPadding(ui.dp(10), ui.dp(9), ui.dp(10), ui.dp(9));
+            meta.setPadding(ui.dp(12), ui.dp(10), ui.dp(12), ui.dp(10));
             title = ui.label("", host.isTv() ? 16 : 15, Ui.INK, true);
             title.setLines(2);
             title.setEllipsize(TextUtils.TruncateAt.END);

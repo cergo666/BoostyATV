@@ -13,6 +13,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -137,26 +138,34 @@ public final class MainActivity extends ComponentActivity
     @Override public void showFeed(String authorSlug, String authorName, boolean push) {
         boolean home = authorSlug == null;
         LinearLayout screen = ui.column();
-        LinearLayout toolbar = ui.toolbar(home ? getString(R.string.feed_title) : authorName, !home,
+        LinearLayout toolbar = ui.toolbar(home ? getString(R.string.app_name) : authorName, !home,
             () -> { if (!busy) goBack(); },
-            heading -> { if (home) heading.setPadding(ui.dp(12), 0, 0, 0); });
+            heading -> { if (home && tv) heading.setPadding(ui.dp(12), 0, 0, 0); });
         if (home) {
-            TextView subscriptions = ui.button(tv ? getString(R.string.feed_subscriptions) : "☰", false, this::showAuthors);
-            subscriptions.setContentDescription(getString(R.string.feed_subscriptions));
-            toolbar.addView(subscriptions, 0, new LinearLayout.LayoutParams(tv ? WRAP : ui.dp(48), ui.dp(46)));
-            TextView refresh = ui.button("⟳", false, () -> {
-                if (currentFeed != null) currentFeed.reload();
-            });
-            refresh.setContentDescription(getString(R.string.account_refresh_feed));
-            toolbar.addView(refresh, new LinearLayout.LayoutParams(ui.dp(46), ui.dp(46)));
-            if (!tv) {
-                TextView qr = ui.button(getString(R.string.feed_qr), false, this::scanTvCode);
-                qr.setContentDescription(getString(R.string.feed_qr_description));
-                toolbar.addView(qr);
+            if (tv) {
+                TextView subscriptions = ui.button(getString(R.string.feed_subscriptions), false,
+                    this::showAuthors);
+                subscriptions.setContentDescription(getString(R.string.feed_subscriptions));
+                toolbar.addView(subscriptions, 0,
+                    new LinearLayout.LayoutParams(WRAP, ui.dp(46)));
             }
-            TextView menu = ui.button("⋯", false, this::showAccountMenu);
-            menu.setContentDescription(getString(R.string.feed_menu));
-            toolbar.addView(menu, new LinearLayout.LayoutParams(ui.dp(46), ui.dp(46)));
+            ImageView refresh = ui.iconButton(R.drawable.ic_refresh,
+                getString(R.string.account_refresh_feed), () -> {
+                    if (currentFeed != null) currentFeed.reload();
+                });
+            toolbar.addView(refresh, new LinearLayout.LayoutParams(ui.dp(44), ui.dp(44)));
+            if (!tv) {
+                ImageView qr = ui.iconButton(R.drawable.ic_qr,
+                    getString(R.string.feed_qr_description), this::scanTvCode);
+                LinearLayout.LayoutParams qrParams = new LinearLayout.LayoutParams(ui.dp(44), ui.dp(44));
+                qrParams.leftMargin = ui.dp(8);
+                toolbar.addView(qr, qrParams);
+            }
+            ImageView menu = ui.iconButton(R.drawable.ic_more,
+                getString(R.string.feed_menu), this::showAccountMenu);
+            LinearLayout.LayoutParams menuParams = new LinearLayout.LayoutParams(ui.dp(44), ui.dp(44));
+            menuParams.leftMargin = ui.dp(8);
+            toolbar.addView(menu, menuParams);
         }
         screen.addView(toolbar);
         FeedScreen feed = new FeedScreen(this, authorSlug, authorName);
@@ -165,6 +174,10 @@ public final class MainActivity extends ComponentActivity
             pendingFeedScroll = -1;
         }
         screen.addView(feed.list(), new LinearLayout.LayoutParams(MATCH, 0, 1));
+        if (home && !tv) {
+            screen.addView(ui.bottomNav(0, () -> {}, this::showAuthors,
+                this::showSettings, this::showAccountMenu));
+        }
         currentFeed = feed;
         replace(screen, push);
         feed.load("");
@@ -175,8 +188,13 @@ public final class MainActivity extends ComponentActivity
     private int pendingFeedScroll = -1;
 
     private void showAuthors() {
-        AuthorsScreen screen = new AuthorsScreen(this);
-        replace(screen.view(), true);
+        AuthorsScreen authors = new AuthorsScreen(this);
+        LinearLayout view = (LinearLayout) authors.view();
+        if (!tv) {
+            view.addView(ui.bottomNav(1, () -> showFeed(null, null, false), () -> {},
+                this::showSettings, this::showAccountMenu));
+        }
+        replace(view, true);
     }
 
     @Override public void showPost(Post post) {

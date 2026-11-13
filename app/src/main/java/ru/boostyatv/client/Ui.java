@@ -1,6 +1,7 @@
 package ru.boostyatv.client;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -11,12 +12,15 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.ImageView;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 
+import java.util.Locale;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 /**
  * Shared programmatic UI construction: spacing, colours and the small set of
@@ -29,6 +33,8 @@ final class Ui {
     static final int INK = 0xfff7f1ef;
     static final int MUTED = 0xffbdb1bf;
     static final int ACCENT = 0xffffaa81;
+    static final int ICON = 0xffddd2da;
+    static final int ICON_SURFACE = 0xff2a2831;
 
     final int background;
     final int surface;
@@ -113,10 +119,184 @@ final class Ui {
         return text;
     }
 
+    TextView chip(String title, Runnable action) {
+        TextView text = label(title, 14, INK, true);
+        text.setGravity(Gravity.CENTER);
+        text.setPadding(dp(16), 0, dp(16), 0);
+        text.setMinHeight(dp(36));
+        text.setMaxLines(1);
+        text.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        StateListDrawable bg = new StateListDrawable();
+        bg.addState(new int[]{android.R.attr.state_selected}, shape(ACCENT, 18, 0));
+        bg.addState(new int[]{android.R.attr.state_focused}, shape(focusedSurface, 18, ACCENT));
+        bg.addState(new int[]{}, shape(surface, 18, 0));
+        text.setBackground(bg);
+        text.setTextColor(new ColorStateList(
+            new int[][]{new int[]{android.R.attr.state_selected}, new int[]{}},
+            new int[]{background, INK}));
+        makeAction(text, action);
+        return text;
+    }
+
     ImageView image(String url, ImageView.ScaleType scale) {
         ImageView view = new ImageView(context);
         bindImage(view, url, scale);
         return view;
+    }
+
+    ImageView icon(int resource, int sizeDp, int color) {
+        ImageView view = new ImageView(context);
+        view.setImageResource(resource);
+        view.setImageTintList(ColorStateList.valueOf(color));
+        view.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        view.setLayoutParams(new LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp)));
+        return view;
+    }
+
+    ImageView iconButton(int resource, String description, Runnable action) {
+        ImageView view = new ImageView(context);
+        view.setImageResource(resource);
+        view.setImageTintList(new ColorStateList(
+            new int[][]{new int[]{android.R.attr.state_focused}, new int[]{}},
+            new int[]{ACCENT, INK}));
+        view.setPadding(dp(11), dp(11), dp(11), dp(11));
+        view.setBackground(control(surface, focusedSurface, 14));
+        view.setContentDescription(description);
+        makeAction(view, action);
+        return view;
+    }
+
+    LinearLayout actionChip(int resource, String title, Runnable action) {
+        LinearLayout chip = row();
+        chip.setGravity(Gravity.CENTER_VERTICAL);
+        chip.setPadding(dp(14), 0, dp(16), 0);
+        chip.setBackground(control(surface, focusedSurface, 18));
+        chip.addView(icon(resource, 18, ICON));
+        TextView label = label(title, 14, INK, true);
+        label.setPadding(dp(8), 0, 0, 0);
+        chip.addView(label);
+        makeAction(chip, action);
+        return chip;
+    }
+
+    TextView settingsSection(String title) {
+        TextView section = label(title.toUpperCase(Locale.getDefault()), 12, MUTED, true);
+        section.setLetterSpacing(0.08f);
+        section.setPadding(dp(18), dp(20), dp(18), dp(4));
+        return section;
+    }
+
+    LinearLayout settingsRow(int iconResource, String title, String subtitle, String value,
+                             Runnable action) {
+        LinearLayout row = row();
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(dp(68));
+        row.setPadding(dp(14), dp(10), dp(12), dp(10));
+        row.setBackground(control(surface, focusedSurface, 18));
+        row.addView(settingsIcon(iconResource), new LinearLayout.LayoutParams(dp(42), dp(42)));
+        LinearLayout text = column();
+        text.setPadding(dp(14), 0, dp(8), 0);
+        text.addView(label(title, 16, INK, true));
+        if (subtitle != null && !subtitle.isEmpty()) {
+            TextView hint = label(subtitle, 13, MUTED, false);
+            hint.setSingleLine(true);
+            hint.setEllipsize(TextUtils.TruncateAt.END);
+            hint.setPadding(0, dp(3), 0, 0);
+            text.addView(hint);
+        }
+        row.addView(text, new LinearLayout.LayoutParams(0, WRAP, 1));
+        TextView valueView = label(value == null ? "" : value, 14, MUTED, false);
+        valueView.setSingleLine(true);
+        valueView.setEllipsize(TextUtils.TruncateAt.END);
+        valueView.setTag(R.id.settings_value);
+        row.addView(valueView);
+        row.addView(icon(R.drawable.ic_chevron, 18, MUTED));
+        makeAction(row, action);
+        return row;
+    }
+
+    LinearLayout settingsToggle(int iconResource, String title, String subtitle, boolean checked,
+                                Consumer<Boolean> changed) {
+        LinearLayout row = row();
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(dp(68));
+        row.setPadding(dp(14), dp(10), dp(12), dp(10));
+        row.setBackground(control(surface, focusedSurface, 18));
+        row.addView(settingsIcon(iconResource), new LinearLayout.LayoutParams(dp(42), dp(42)));
+        LinearLayout text = column();
+        text.setPadding(dp(14), 0, dp(8), 0);
+        text.addView(label(title, 16, INK, true));
+        TextView hint = label(subtitle, 13, MUTED, false);
+        hint.setSingleLine(true);
+        hint.setEllipsize(TextUtils.TruncateAt.END);
+        hint.setPadding(0, dp(3), 0, 0);
+        text.addView(hint);
+        row.addView(text, new LinearLayout.LayoutParams(0, WRAP, 1));
+        Switch toggle = new Switch(context);
+        toggle.setChecked(checked);
+        toggle.setClickable(false);
+        toggle.setFocusable(false);
+        toggle.setShowText(false);
+        toggle.setThumbTintList(new ColorStateList(
+            new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+            new int[]{0xffffffff, 0xff8b8491}));
+        toggle.setTrackTintList(new ColorStateList(
+            new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+            new int[]{0xffffaa81, 0xff3a373f}));
+        row.addView(toggle);
+        makeAction(row, () -> {
+            boolean next = !toggle.isChecked();
+            toggle.setChecked(next);
+            changed.accept(next);
+        });
+        return row;
+    }
+
+    void setSettingsValue(View row, String value) {
+        View target = row.findViewWithTag(R.id.settings_value);
+        if (target instanceof TextView text) text.setText(value);
+    }
+
+    private FrameLayout settingsIcon(int resource) {
+        FrameLayout badge = new FrameLayout(context);
+        badge.setBackground(shape(ICON_SURFACE, 14, 0));
+        ImageView icon = icon(resource, 22, ICON);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER);
+        badge.addView(icon, params);
+        return badge;
+    }
+
+    LinearLayout bottomNav(int selected, Runnable home, Runnable subscriptions,
+                           Runnable settings, Runnable account) {
+        LinearLayout bar = row();
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(8), dp(4), dp(8), dp(4));
+        bar.setBackgroundColor(background);
+        addNavItem(bar, 0, selected, R.drawable.ic_home, context.getString(R.string.nav_home), home);
+        addNavItem(bar, 1, selected, R.drawable.ic_subscriptions,
+            context.getString(R.string.feed_subscriptions), subscriptions);
+        addNavItem(bar, 2, selected, R.drawable.ic_settings,
+            context.getString(R.string.settings_title), settings);
+        addNavItem(bar, 3, selected, R.drawable.ic_person,
+            context.getString(R.string.nav_account), account);
+        return bar;
+    }
+
+    private void addNavItem(LinearLayout bar, int index, int selected, int iconResource,
+                            String title, Runnable action) {
+        boolean active = index == selected;
+        LinearLayout item = column();
+        item.setGravity(Gravity.CENTER_HORIZONTAL);
+        item.setPadding(0, dp(7), 0, dp(5));
+        if (active) item.setBackground(shape(0x1affaa81, 18, 0));
+        ImageView icon = icon(iconResource, 23, active ? ACCENT : MUTED);
+        item.addView(icon);
+        TextView label = label(title, 11, active ? ACCENT : MUTED, active);
+        label.setSingleLine(true);
+        label.setPadding(0, dp(3), 0, 0);
+        item.addView(label);
+        makeAction(item, action);
+        bar.addView(item, new LinearLayout.LayoutParams(0, WRAP, 1));
     }
 
     void bindImage(ImageView view, String url, ImageView.ScaleType scale) {

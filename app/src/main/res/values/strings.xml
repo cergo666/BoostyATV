@@ -78,9 +78,7 @@
     <string name="login_keypad_delete">Delete digit</string>
 
     <!-- Feed -->
-    <string name="feed_title">Feed</string>
     <string name="feed_subscriptions">Subscriptions</string>
-    <string name="feed_qr">QR</string>
     <string name="feed_qr_description">Scan QR to connect TV</string>
     <string name="feed_menu">Menu</string>
     <string name="feed_all_posts">All posts</string>
@@ -155,9 +153,6 @@
     <string name="settings_title">Settings</string>
     <string name="settings_quality">Video quality</string>
     <string name="settings_player">Player</string>
-    <string name="settings_theme">Theme</string>
-    <string name="settings_theme_dark">Dark</string>
-    <string name="settings_theme_oled">OLED · black background</string>
     <string name="settings_connect_tv">Connect TV</string>
 
     <!-- Account menu -->
@@ -215,9 +210,6 @@
     <string name="player_menu_quality">Video quality  ·  %1$s</string>
     <string name="player_menu_speed">Speed  ·  %1$s×</string>
     <string name="player_seek_go">Go</string>
-    <string name="settings_quality_value">Video quality  ·  %1$s</string>
-    <string name="settings_player_value">Player  ·  %1$s</string>
-    <string name="settings_theme_value">Theme  ·  %1$s</string>
     <string name="player_stats_channels">%1$d ch.</string>
     <string name="player_stats_khz">%.1f kHz</string>
     <string name="player_stats_seconds">%.1f s</string>
@@ -240,4 +232,17 @@
     <string name="update_in_progress_wait">Wait for the update download to finish.</string>
     <string name="login_country_prefix">%1$s  %2$s  ▾</string>
     <string name="update_download_progress">%1$d%%</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_account">Account</string>
+    <string name="settings_section_playback">Playback</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_tv">TV</string>
+    <string name="settings_section_app">App</string>
+    <string name="settings_quality_hint">Used in the feed and player</string>
+    <string name="settings_player_hint">Built-in or external player</string>
+    <string name="settings_oled_title">OLED theme</string>
+    <string name="settings_oled_hint">Black background instead of dark grey</string>
+    <string name="settings_connect_tv_hint">Sign in with a QR code</string>
+    <string name="settings_about_hint">Version, author and project link</string>
+    <string name="settings_check_updates_hint">Check for a new version</string>
 </resources>

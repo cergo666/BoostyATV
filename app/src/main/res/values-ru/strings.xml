@@ -78,9 +78,7 @@
     <string name="login_keypad_delete">Удалить цифру</string>
 
     <!-- Feed -->
-    <string name="feed_title">Лента</string>
     <string name="feed_subscriptions">Подписки</string>
-    <string name="feed_qr">QR</string>
     <string name="feed_qr_description">Сканировать QR для подключения ТВ</string>
     <string name="feed_menu">Меню</string>
     <string name="feed_all_posts">Все посты</string>
@@ -155,9 +153,6 @@
     <string name="settings_title">Настройки</string>
     <string name="settings_quality">Качество видео</string>
     <string name="settings_player">Плеер</string>
-    <string name="settings_theme">Тема</string>
-    <string name="settings_theme_dark">Тёмная</string>
-    <string name="settings_theme_oled">OLED · чёрный фон</string>
     <string name="settings_connect_tv">Подключить ТВ</string>
 
     <!-- Account menu -->
@@ -215,9 +210,6 @@
     <string name="player_menu_quality">Качество видео  ·  %1$s</string>
     <string name="player_menu_speed">Скорость  ·  %1$s×</string>
     <string name="player_seek_go">Перейти</string>
-    <string name="settings_quality_value">Качество видео  ·  %1$s</string>
-    <string name="settings_player_value">Плеер  ·  %1$s</string>
-    <string name="settings_theme_value">Тема  ·  %1$s</string>
     <string name="player_stats_channels">%1$d кан.</string>
     <string name="player_stats_khz">%.1f кГц</string>
     <string name="player_stats_seconds">%.1f с</string>
@@ -240,4 +232,17 @@
     <string name="update_in_progress_wait">Дождитесь окончания загрузки обновления.</string>
     <string name="login_country_prefix">%1$s  %2$s  ▾</string>
     <string name="update_download_progress">%1$d%%</string>
+    <string name="nav_home">Главная</string>
+    <string name="nav_account">Аккаунт</string>
+    <string name="settings_section_playback">Воспроизведение</string>
+    <string name="settings_section_appearance">Оформление</string>
+    <string name="settings_section_tv">Телевизор</string>
+    <string name="settings_section_app">Приложение</string>
+    <string name="settings_quality_hint">Как в ленте и плеере</string>
+    <string name="settings_player_hint">Встроенный или внешний</string>
+    <string name="settings_oled_title">OLED-тема</string>
+    <string name="settings_oled_hint">Чёрный фон вместо тёмно-серого</string>
+    <string name="settings_connect_tv_hint">Вход по QR-коду</string>
+    <string name="settings_about_hint">Версия, автор и ссылка на проект</string>
+    <string name="settings_check_updates_hint">Проверить новую версию</string>
 </resources>
