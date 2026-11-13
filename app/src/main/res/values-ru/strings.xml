@@ -245,4 +245,10 @@
     <string name="settings_connect_tv_hint">Вход по QR-коду</string>
     <string name="settings_about_hint">Версия, автор и ссылка на проект</string>
     <string name="settings_check_updates_hint">Проверить новую версию</string>
+    <string name="account_section_account">Аккаунт</string>
+    <string name="account_profile_loading">Загрузка профиля…</string>
+    <string name="account_profile_signed_in">Вы вошли в аккаунт Boosty</string>
+    <string name="account_refresh_hint">Проверить новые публикации</string>
+    <string name="account_settings_hint">Плеер, качество и тема</string>
+    <string name="account_logout_hint">Завершить сеанс на этом устройстве</string>
 </resources>

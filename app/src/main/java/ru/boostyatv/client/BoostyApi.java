@@ -57,6 +57,7 @@ final class BoostyApi {
                    int replyCount, Reactions reactions) {}
     record Comments(List<Comment> items, String next) {}
     record AccessSession(String access, long expiry, String device) {}
+    record Profile(String name, String email, String avatar) {}
 
     synchronized Challenge sendCode(String phone) throws Exception {
         try {
@@ -91,8 +92,17 @@ final class BoostyApi {
         session = next;
     }
 
-    synchronized AccessSession shareAccess() throws Exception {
-        if (session == null) throw new SignedOut();
+    /** Reads the signed-in Boosty profile for the account tab. */
+    synchronized Profile currentUser() throws Exception {
+        JSONObject user = authenticated("/v1/user/current");
+        String name = Post.string(user, "name").trim();
+        if (name.isEmpty()) name = Post.string(user, "displayName").trim();
+        if (name.isEmpty()) name = Post.string(user, "username").trim();
+        return new Profile(name, Post.string(user, "email").trim(),
+            Post.string(user, "avatarUrl").trim());
+    }
+
+    synchronized AccessSession shareAccess() throws Exception {        if (session == null) throw new SignedOut();
         if (session.optLong("expiry") - System.currentTimeMillis() / 1000L < 60) refresh();
         return new AccessSession(session.getString("access"), session.getLong("expiry"),
             session.optString("device", deviceId));

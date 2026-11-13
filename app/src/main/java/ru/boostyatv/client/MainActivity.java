@@ -33,7 +33,7 @@ import static ru.boostyatv.client.Ui.showError;
 
 public final class MainActivity extends ComponentActivity
         implements FeedScreen.Host, PlayerScreen.Host, SettingsScreen.Host, PostScreen.Host,
-        LoginScreen.Host, AuthorsScreen.Host, AboutScreen.Host, AccountMenu.Host {
+        LoginScreen.Host, AuthorsScreen.Host, AboutScreen.Host, AccountMenu.Host, AccountScreen.Host {
     @Override public Context context() { return this; }
     @Override public Ui ui() { return ui; }
     @Override public BoostyApi api() { return api; }
@@ -176,8 +176,9 @@ public final class MainActivity extends ComponentActivity
         }
         screen.addView(feed.list(), new LinearLayout.LayoutParams(MATCH, 0, 1));
         if (home && !tv) {
-            screen.addView(ui.bottomNav(0, () -> {}, this::showAuthors,
-                this::showSettings, this::showAccountMenu));
+            screen.setTag(R.id.nav_tab, 0);
+            screen.addView(ui.bottomNav(0, tab(0, () -> showFeed(null, null, true)),
+                tab(1, this::showAuthors), tab(2, this::showSettings), tab(3, this::showAccount)));
         }
         currentFeed = feed;
         replace(screen, push);
@@ -187,15 +188,32 @@ public final class MainActivity extends ComponentActivity
 
     private FeedScreen currentFeed;
     private int pendingFeedScroll = -1;
+    private int activeTab = -1;
 
     private void showAuthors() {
         AuthorsScreen authors = new AuthorsScreen(this);
         LinearLayout view = (LinearLayout) authors.view();
         if (!tv) {
-            view.addView(ui.bottomNav(1, () -> showFeed(null, null, false), () -> {},
-                this::showSettings, this::showAccountMenu));
+            view.setTag(R.id.nav_tab, 1);
+            view.addView(ui.bottomNav(1, tab(0, () -> showFeed(null, null, true)),
+                tab(1, this::showAuthors), tab(2, this::showSettings), tab(3, this::showAccount)));
         }
         replace(view, true);
+    }
+
+    private void showAccount() {
+        AccountScreen account = new AccountScreen(this);
+        View content = account.view();
+        if (!tv) {
+            LinearLayout wrap = ui.column();
+            wrap.setTag(R.id.nav_tab, 3);
+            wrap.addView(content, new LinearLayout.LayoutParams(MATCH, 0, 1));
+            wrap.addView(ui.bottomNav(3, tab(0, () -> showFeed(null, null, true)),
+                tab(1, this::showAuthors), tab(2, this::showSettings), tab(3, this::showAccount)));
+            content = wrap;
+        }
+        replace(content, true);
+        if (tv) account.focus();
     }
 
     @Override public void showPost(Post post) {
@@ -299,8 +317,24 @@ public final class MainActivity extends ComponentActivity
 
     @Override public void showSettings() {
         SettingsScreen settings = new SettingsScreen(this);
-        replace(settings.view(), true);
+        View content = settings.view();
+        if (!tv) {
+            LinearLayout wrap = ui.column();
+            wrap.setTag(R.id.nav_tab, 2);
+            wrap.addView(content, new LinearLayout.LayoutParams(MATCH, 0, 1));
+            wrap.addView(ui.bottomNav(2, tab(0, () -> showFeed(null, null, true)),
+                tab(1, this::showAuthors), tab(2, this::showSettings), tab(3, this::showAccount)));
+            content = wrap;
+        }
+        replace(content, true);
         if (tv) settings.focus();
+    }
+
+    /** Bottom-nav selection: repeated taps on the active tab do nothing. */
+    private Runnable tab(int index, Runnable action) {
+        return () -> {
+            if (activeTab != index) action.run();
+        };
     }
 
     @Override public <T> void perform(Callable<T> request, TextView error, Consumer<T> done) {
@@ -388,6 +422,8 @@ public final class MainActivity extends ComponentActivity
         }
         host.removeAllViews();
         host.addView(view, new FrameLayout.LayoutParams(MATCH, MATCH));
+        Object tab = view.getTag(R.id.nav_tab);
+        activeTab = tab instanceof Integer value ? value : -1;
         back.setEnabled(!navigator.isEmpty() || (loginScreen != null && loginScreen.hasState()));
     }
 }
