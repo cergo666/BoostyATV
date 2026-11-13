@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Message;
+import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -19,6 +20,7 @@ import org.json.JSONTokener;
 
 import java.util.function.Consumer;
 
+@SuppressLint("ViewConstructor")
 final class BoostyWebLogin extends FrameLayout {
     private static final String[] PROVIDERS = {
         "boosty.to", "vk.com", "vk.ru", "ok.ru", "mail.ru", "ya.ru", "yandex.ru",
@@ -126,7 +128,8 @@ final class BoostyWebLogin extends FrameLayout {
         if (auth.isEmpty() || auth.equals(initialAuth)) return null;
         try {
             return WebSession.parse(auth, cookie(cookies, "_clientId"));
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            Log.d("BoostyATV", "Web login cookie session is unusable", e);
             return null;
         }
     }
@@ -144,9 +147,9 @@ final class BoostyWebLogin extends FrameLayout {
 
     private void showNavigationError(Uri uri) {
         if ("accounts.google.com".equals(uri.getHost())) {
-            error.accept("Google требует системный браузер. Для входа в Boosty ATV можно использовать привязанный номер телефона.");
+            error.accept(getContext().getString(R.string.login_web_google_browser));
         } else {
-            error.accept("Этот сайт не входит в поддерживаемые страницы входа Boosty.");
+            error.accept(getContext().getString(R.string.login_web_unsupported_site));
         }
     }
 
@@ -162,7 +165,7 @@ final class BoostyWebLogin extends FrameLayout {
             }
         }
         if (!isBoostyPage(current)) {
-            error.accept("Завершите вход и дождитесь возврата на boosty.to.");
+            error.accept(getContext().getString(R.string.login_web_return));
             return;
         }
         browser.evaluateJavascript("""
@@ -182,7 +185,7 @@ final class BoostyWebLogin extends FrameLayout {
                     if (device.isEmpty()) device = cookie(cookies, "_clientId");
                     done.accept(WebSession.parse(auth, device));
                 } catch (Exception e) {
-                    error.accept("На boosty.to ещё нет активной сессии. Войдите на сайте и нажмите кнопку снова.");
+                    error.accept(getContext().getString(R.string.login_web_no_session));
                 }
             });
     }
@@ -211,16 +214,19 @@ final class BoostyWebLogin extends FrameLayout {
     void close(boolean removeSession) {
         removeCallbacks(checkAuthorization);
         onAuthorized = null;
-        if (removeSession) {
-            WebStorage.getInstance().deleteOrigin(BoostyApi.ORIGIN);
-            CookieManager cookies = CookieManager.getInstance();
-            for (String name : new String[]{"auth", "_clientId"}) {
-                cookies.setCookie(BoostyApi.ORIGIN, name + "=; Max-Age=0; Path=/; Secure");
-                cookies.setCookie(BoostyApi.ORIGIN, name + "=; Max-Age=0; Path=/; Domain=boosty.to; Secure");
-            }
-        }
+        if (removeSession) clearCredentials();
         closePopup();
         removeView(root);
         root.destroy();
+    }
+
+    static void clearCredentials() {
+        WebStorage.getInstance().deleteOrigin(BoostyApi.ORIGIN);
+        CookieManager cookies = CookieManager.getInstance();
+        for (String name : new String[]{"auth", "_clientId"}) {
+            cookies.setCookie(BoostyApi.ORIGIN, name + "=; Max-Age=0; Path=/; Secure");
+            cookies.setCookie(BoostyApi.ORIGIN, name + "=; Max-Age=0; Path=/; Domain=boosty.to; Secure");
+        }
+        cookies.flush();
     }
 }
