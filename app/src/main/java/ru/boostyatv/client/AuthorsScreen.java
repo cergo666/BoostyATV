@@ -68,7 +68,7 @@ final class AuthorsScreen {
                 item.setPadding(ui.dp(12), 0, ui.dp(12), 0);
                 item.setBackground(ui.control(ui.surface, ui.focusedSurface, 12));
                 ImageView avatar = ui.image(author.image(), ImageView.ScaleType.CENTER_CROP);
-                avatar.setBackground(ui.shape(0xff332b38, 23, 0));
+                avatar.setBackground(ui.shape(0xff332b38, Ui.RADIUS_PILL, 0));
                 avatar.setClipToOutline(true);
                 item.addView(avatar, new LinearLayout.LayoutParams(ui.dp(44), ui.dp(44)));
                 TextView name = ui.label(author.name(), 17, Ui.INK, true);

@@ -49,11 +49,11 @@ final class AboutScreen {
             new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
                 new int[]{0xff39252e, ui.surface});
-        card.setCornerRadius(ui.dp(24));
+        card.setCornerRadius(ui.dp(Ui.RADIUS_CARD));
         hero.setBackground(card);
         ImageView icon = new ImageView(ui.context());
         icon.setImageResource(R.drawable.app_icon);
-        icon.setBackground(ui.shape(ui.background, 18, 0));
+        icon.setBackground(ui.shape(ui.background, Ui.RADIUS_MEDIA, 0));
         icon.setClipToOutline(true);
         hero.addView(icon, new LinearLayout.LayoutParams(ui.dp(76), ui.dp(76)));
         ui.margin(hero, ui.label(ui.context().getString(R.string.app_name), 29, Ui.INK, true),

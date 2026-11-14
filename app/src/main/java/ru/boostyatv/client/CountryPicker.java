@@ -55,7 +55,7 @@ final class CountryPicker {
         FrameLayout results = new FrameLayout(activity);
         ListView list = new ListView(activity);
         list.setDivider(null);
-        list.setSelector(ui.shape(ui.focusedSurface, 10, Ui.ACCENT));
+        list.setSelector(ui.shape(ui.focusedSurface, Ui.RADIUS_CONTROL, Ui.ACCENT));
         list.setId(View.generateViewId());
         search.setNextFocusDownId(list.getId());
         results.addView(list, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));

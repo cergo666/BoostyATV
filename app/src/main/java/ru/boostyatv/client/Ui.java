@@ -35,6 +35,10 @@ final class Ui {
     static final int ACCENT = 0xffffaa81;
     static final int ICON = 0xffddd2da;
     static final int ICON_SURFACE = 0xff2a2831;
+    static final int RADIUS_CARD = 22;
+    static final int RADIUS_MEDIA = 16;
+    static final int RADIUS_CONTROL = 14;
+    static final int RADIUS_PILL = 999;
 
     final int background;
     final int surface;
@@ -83,16 +87,23 @@ final class Ui {
                          java.util.function.Consumer<TextView> heading) {
         LinearLayout bar = row();
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(tv ? 38 : 16), dp(8), dp(tv ? 38 : 12), dp(7));
+        bar.setPadding(dp(tv ? 38 : 16), dp(10), dp(tv ? 38 : 12), dp(8));
         if (back) {
-            TextView arrow = button("‹", false, backAction);
+            ImageView arrow = new ImageView(context);
+            arrow.setImageResource(R.drawable.ic_back);
+            arrow.setImageTintList(ColorStateList.valueOf(INK));
+            arrow.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            arrow.setPadding(dp(10), dp(10), dp(10), dp(10));
+            arrow.setBackground(control(0x00000000, focusedSurface, RADIUS_PILL));
             arrow.setContentDescription(context.getString(R.string.nav_back));
+            makeAction(arrow, backAction);
             bar.addView(arrow, new LinearLayout.LayoutParams(dp(44), dp(44)));
         }
-        TextView titleView = label(title, tv ? 32 : 27, INK, true);
+        TextView titleView = label(title, tv ? 32 : 28, INK, true);
         titleView.setSingleLine();
+        titleView.setLetterSpacing(-0.02f);
         titleView.setEllipsize(TextUtils.TruncateAt.END);
-        if (back) titleView.setPadding(dp(12), 0, 0, 0);
+        if (back) titleView.setPadding(dp(10), 0, 0, 0);
         bar.addView(titleView, new LinearLayout.LayoutParams(0, WRAP, 1));
         heading.accept(titleView);
         return bar;
@@ -110,32 +121,48 @@ final class Ui {
     TextView button(String title, boolean primary, Runnable action) {
         TextView text = label(title, 15, primary ? background : INK, true);
         text.setGravity(Gravity.CENTER);
-        text.setPadding(dp(10), 0, dp(10), 0);
-        text.setMinHeight(dp(42));
+        text.setPadding(dp(18), 0, dp(18), 0);
+        text.setMinHeight(dp(44));
         text.setMaxLines(1);
         text.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        text.setBackground(primary ? control(ACCENT, 0xffffc3a7, 12) : control(surface, focusedSurface, 12));
+        text.setBackground(primary
+            ? control(ACCENT, 0xffffc3a7, RADIUS_PILL)
+            : control(surface, focusedSurface, RADIUS_PILL));
         makeAction(text, action);
         return text;
     }
 
-    TextView chip(String title, Runnable action) {
+    /** A pill segment for a two- or three-choice switch. */
+    TextView segment(String title, Runnable action) {
         TextView text = label(title, 14, INK, true);
         text.setGravity(Gravity.CENTER);
         text.setPadding(dp(16), 0, dp(16), 0);
-        text.setMinHeight(dp(36));
-        text.setMaxLines(1);
-        text.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        text.setMinHeight(dp(34));
+        text.setSingleLine(true);
+        text.setEllipsize(TextUtils.TruncateAt.END);
         StateListDrawable bg = new StateListDrawable();
-        bg.addState(new int[]{android.R.attr.state_selected}, shape(ACCENT, 18, 0));
-        bg.addState(new int[]{android.R.attr.state_focused}, shape(focusedSurface, 18, ACCENT));
-        bg.addState(new int[]{}, shape(surface, 18, 0));
+        bg.addState(new int[]{android.R.attr.state_selected}, shape(ACCENT, RADIUS_PILL, 0));
+        bg.addState(new int[]{android.R.attr.state_focused}, shape(focusedSurface, RADIUS_PILL, ACCENT));
+        bg.addState(new int[]{android.R.attr.state_pressed}, shape(focusedSurface, RADIUS_PILL, 0));
+        bg.addState(new int[]{}, shape(Color.TRANSPARENT, RADIUS_PILL, 0));
         text.setBackground(bg);
         text.setTextColor(new ColorStateList(
             new int[][]{new int[]{android.R.attr.state_selected}, new int[]{}},
             new int[]{background, INK}));
         makeAction(text, action);
         return text;
+    }
+
+    LinearLayout segmented() {
+        LinearLayout group = row();
+        group.setGravity(Gravity.CENTER_VERTICAL);
+        group.setPadding(dp(3), dp(3), dp(3), dp(3));
+        group.setBackground(shape(surface, RADIUS_PILL, 0));
+        return group;
+    }
+
+    void selectSegment(TextView segment, boolean selected) {
+        segment.setSelected(selected);
     }
 
     ImageView image(String url, ImageView.ScaleType scale) {
@@ -160,7 +187,7 @@ final class Ui {
             new int[][]{new int[]{android.R.attr.state_focused}, new int[]{}},
             new int[]{ACCENT, INK}));
         view.setPadding(dp(11), dp(11), dp(11), dp(11));
-        view.setBackground(control(surface, focusedSurface, 14));
+        view.setBackground(control(surface, focusedSurface, RADIUS_PILL));
         view.setContentDescription(description);
         makeAction(view, action);
         return view;
@@ -170,7 +197,7 @@ final class Ui {
         LinearLayout chip = row();
         chip.setGravity(Gravity.CENTER_VERTICAL);
         chip.setPadding(dp(14), 0, dp(16), 0);
-        chip.setBackground(control(surface, focusedSurface, 18));
+        chip.setBackground(control(surface, focusedSurface, RADIUS_PILL));
         chip.addView(icon(resource, 18, ICON));
         TextView label = label(title, 14, INK, true);
         label.setPadding(dp(8), 0, 0, 0);
@@ -180,9 +207,9 @@ final class Ui {
     }
 
     TextView settingsSection(String title) {
-        TextView section = label(title.toUpperCase(Locale.getDefault()), 12, MUTED, true);
-        section.setLetterSpacing(0.08f);
-        section.setPadding(dp(18), dp(20), dp(18), dp(4));
+        TextView section = label(title.toUpperCase(Locale.getDefault()), 11, MUTED, true);
+        section.setLetterSpacing(0.12f);
+        section.setPadding(dp(18), dp(24), dp(18), dp(6));
         return section;
     }
 
@@ -190,10 +217,10 @@ final class Ui {
                              Runnable action) {
         LinearLayout row = row();
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight(dp(68));
-        row.setPadding(dp(14), dp(10), dp(12), dp(10));
-        row.setBackground(control(surface, focusedSurface, 18));
-        row.addView(settingsIcon(iconResource), new LinearLayout.LayoutParams(dp(42), dp(42)));
+        row.setMinimumHeight(dp(72));
+        row.setPadding(dp(14), dp(12), dp(12), dp(12));
+        row.setBackground(control(surface, focusedSurface, RADIUS_CARD));
+        row.addView(settingsIcon(iconResource), new LinearLayout.LayoutParams(dp(44), dp(44)));
         LinearLayout text = column();
         text.setPadding(dp(14), 0, dp(8), 0);
         text.addView(label(title, 16, INK, true));
@@ -219,10 +246,10 @@ final class Ui {
                                 Consumer<Boolean> changed) {
         LinearLayout row = row();
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight(dp(68));
-        row.setPadding(dp(14), dp(10), dp(12), dp(10));
-        row.setBackground(control(surface, focusedSurface, 18));
-        row.addView(settingsIcon(iconResource), new LinearLayout.LayoutParams(dp(42), dp(42)));
+        row.setMinimumHeight(dp(72));
+        row.setPadding(dp(14), dp(12), dp(12), dp(12));
+        row.setBackground(control(surface, focusedSurface, RADIUS_CARD));
+        row.addView(settingsIcon(iconResource), new LinearLayout.LayoutParams(dp(44), dp(44)));
         LinearLayout text = column();
         text.setPadding(dp(14), 0, dp(8), 0);
         text.addView(label(title, 16, INK, true));
@@ -259,7 +286,7 @@ final class Ui {
 
     private FrameLayout settingsIcon(int resource) {
         FrameLayout badge = new FrameLayout(context);
-        badge.setBackground(shape(ICON_SURFACE, 14, 0));
+        badge.setBackground(shape(ICON_SURFACE, RADIUS_CONTROL, 0));
         ImageView icon = icon(resource, 22, ICON);
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER);
         badge.addView(icon, params);
@@ -293,20 +320,25 @@ final class Ui {
         LinearLayout item = column();
         item.setGravity(Gravity.CENTER);
         StateListDrawable background = new StateListDrawable();
-        background.addState(new int[]{android.R.attr.state_focused}, shape(0x1affaa81, 18, 0));
-        background.addState(new int[]{android.R.attr.state_pressed}, shape(0x1affaa81, 18, 0));
-        background.addState(new int[]{}, shape(active ? 0x1affaa81 : 0x00000000, 18, 0));
+        background.addState(new int[]{android.R.attr.state_pressed}, shape(0x14ffffff, 16, 0));
+        background.addState(new int[]{}, shape(Color.TRANSPARENT, 16, 0));
         item.setBackground(background);
+
+        FrameLayout badge = new FrameLayout(context);
+        badge.setBackground(active ? shape(0x24ffaa81, 15, 0) : shape(Color.TRANSPARENT, 15, 0));
         ImageView icon = icon(iconResource, 22, active ? ACCENT : MUTED);
-        item.addView(icon, new LinearLayout.LayoutParams(dp(22), dp(22)));
+        badge.addView(icon, new FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER));
+        item.addView(badge, new LinearLayout.LayoutParams(dp(50), dp(28)));
+
         TextView label = label(title, 11, active ? ACCENT : MUTED, active);
         label.setSingleLine(true);
         label.setGravity(Gravity.CENTER);
         label.setEllipsize(TextUtils.TruncateAt.END);
-        label.setPadding(dp(2), dp(2), dp(2), dp(2));
+        label.setLetterSpacing(0.01f);
+        label.setPadding(dp(2), dp(3), dp(2), 0);
         item.addView(label, new LinearLayout.LayoutParams(WRAP, WRAP));
         makeAction(item, action);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(54), 1);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(56), 1);
         params.leftMargin = dp(2);
         params.rightMargin = dp(2);
         bar.addView(item, params);
@@ -349,7 +381,7 @@ final class Ui {
     StateListDrawable control(int normal, int focused, int radius) {
         StateListDrawable result = new StateListDrawable();
         result.addState(new int[]{android.R.attr.state_focused}, shape(focused, radius, INK));
-        result.addState(new int[]{android.R.attr.state_pressed}, shape(focused, radius, ACCENT));
+        result.addState(new int[]{android.R.attr.state_pressed}, shape(focused, radius, 0));
         result.addState(new int[]{}, shape(normal, radius, 0));
         return result;
     }

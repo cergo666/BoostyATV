@@ -97,7 +97,7 @@ final class LoginScreen implements PairFlow.Host, CountryPicker.Host {
         brand.setGravity(Gravity.CENTER_VERTICAL);
         ImageView mark = new ImageView(activity);
         mark.setImageResource(R.drawable.app_icon);
-        mark.setBackground(ui.shape(ui.surface, 12, 0));
+        mark.setBackground(ui.shape(ui.surface, Ui.RADIUS_CONTROL, 0));
         mark.setClipToOutline(true);
         brand.addView(mark, new LinearLayout.LayoutParams(ui.dp(42), ui.dp(42)));
         TextView name = ui.label(activity.getString(R.string.app_name), 17, Ui.ACCENT, true);
@@ -114,7 +114,7 @@ final class LoginScreen implements PairFlow.Host, CountryPicker.Host {
         ui.margin(intro, ui.label(hint, tv ? 17 : 16, Ui.MUTED, false), Ui.MATCH, Ui.WRAP, 10);
 
         form.setPadding(ui.dp(20), ui.dp(18), ui.dp(20), ui.dp(18));
-        form.setBackground(ui.shape(ui.surface, 20, 0));
+        form.setBackground(ui.shape(ui.surface, Ui.RADIUS_CARD, 0));
         form.addView(ui.label(confirming
             ? activity.getString(R.string.login_label_code)
             : activity.getString(R.string.login_label_phone), 16, Ui.INK, true));

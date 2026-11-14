@@ -45,9 +45,9 @@ final class AccountScreen {
         LinearLayout profile = ui.row();
         profile.setGravity(Gravity.CENTER_VERTICAL);
         profile.setPadding(ui.dp(18), ui.dp(18), ui.dp(18), ui.dp(18));
-        profile.setBackground(ui.shape(ui.surface, 22, 0));
+        profile.setBackground(ui.shape(ui.surface, Ui.RADIUS_CARD, 0));
         avatar = new FrameLayout(ui.context());
-        avatar.setBackground(ui.shape(Ui.ICON_SURFACE, 28, 0));
+        avatar.setBackground(ui.shape(Ui.ICON_SURFACE, Ui.RADIUS_PILL, 0));
         avatar.setClipToOutline(true);
         ImageView logo = new ImageView(ui.context());
         logo.setImageResource(R.drawable.app_icon);

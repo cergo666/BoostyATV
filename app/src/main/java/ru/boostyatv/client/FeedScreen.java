@@ -133,27 +133,25 @@ final class FeedScreen {
 
     private void buildHeader() {
         if (author == null) {
-            LinearLayout filters = ui.row();
-            TextView all = ui.chip(context.getString(R.string.feed_all_posts), () -> switchFilter(false));
-            TextView videos = ui.chip(context.getString(R.string.feed_videos_only), () -> switchFilter(true));
+            LinearLayout filters = ui.segmented();
+            TextView all = ui.segment(context.getString(R.string.feed_all_posts), () -> {});
+            TextView videos = ui.segment(context.getString(R.string.feed_videos_only), () -> {});
             all.setSelected(true);
-            filters.addView(all, new LinearLayout.LayoutParams(Ui.WRAP, ui.dp(36)));
-            LinearLayout.LayoutParams second = new LinearLayout.LayoutParams(Ui.WRAP, ui.dp(36));
-            second.leftMargin = ui.dp(8);
-            filters.addView(videos, second);
+            filters.addView(all, new LinearLayout.LayoutParams(Ui.WRAP, ui.dp(34)));
+            filters.addView(videos, new LinearLayout.LayoutParams(Ui.WRAP, ui.dp(34)));
             all.setOnClickListener(view -> {
                 if (host.busy() || !videosOnly) return;
-                all.setSelected(true);
-                videos.setSelected(false);
+                ui.selectSegment(all, true);
+                ui.selectSegment(videos, false);
                 switchFilter(false);
             });
             videos.setOnClickListener(view -> {
                 if (host.busy() || videosOnly) return;
-                videos.setSelected(true);
-                all.setSelected(false);
+                ui.selectSegment(videos, true);
+                ui.selectSegment(all, false);
                 switchFilter(true);
             });
-            header.addView(filters);
+            header.addView(filters, new LinearLayout.LayoutParams(Ui.WRAP, Ui.WRAP));
         } else {
             LinearLayout filters = ui.row();
             LinearLayout search = ui.actionChip(R.drawable.ic_search,
@@ -340,10 +338,16 @@ final class FeedScreen {
             if (type == HEADER) {
                 if (header.getParent() instanceof ViewGroup group) group.removeView(header);
                 item = header;
-            } else if (type == FOOTER) item = ui.button("", false, () -> {
-                if (failed) load(next);
-            });
+            } else if (type == FOOTER) item = ui.label("", 14, Ui.MUTED, false);
             else item = new PostCard(host, ui);
+            if (type == FOOTER) {
+                TextView footer = (TextView) item;
+                footer.setGravity(Gravity.CENTER);
+                footer.setPadding(ui.dp(16), ui.dp(22), ui.dp(16), ui.dp(28));
+                footer.setOnClickListener(clicked -> {
+                    if (failed) load(next);
+                });
+            }
             item.setLayoutParams(new RecyclerView.LayoutParams(Ui.MATCH, Ui.WRAP));
             return new RecyclerView.ViewHolder(item) {};
         }
@@ -356,6 +360,7 @@ final class FeedScreen {
                     : loading ? context.getString(R.string.loading)
                     : !next.isEmpty() ? context.getString(R.string.feed_loading_publications)
                     : context.getString(R.string.no_more));
+                footer.setTextColor(failed ? Ui.ACCENT : Ui.MUTED);
                 footer.setVisibility(failed || loading || !next.isEmpty() || visible.isEmpty()
                     ? View.VISIBLE : View.GONE);
                 footer.setFocusable(failed);
@@ -372,7 +377,7 @@ final class FeedScreen {
         private final Ui ui;
         private final TextView placeholder;
         private final ImageView image;
-        private final TextView playBadge;
+        private final FrameLayout playBadge;
         private final ProgressBar progress;
         private final TextView author;
         private final TextView title;
@@ -384,19 +389,19 @@ final class FeedScreen {
             this.host = host;
             this.ui = ui;
             setOrientation(VERTICAL);
-            setPadding(ui.dp(3), ui.dp(3), ui.dp(3), ui.dp(3));
-            setBackground(ui.control(ui.surface, ui.focusedSurface, 18));
+            setPadding(ui.dp(4), ui.dp(4), ui.dp(4), ui.dp(4));
+            setBackground(ui.control(ui.surface, ui.focusedSurface, Ui.RADIUS_CARD));
             setClipToOutline(true);
             if (host.isTv()) {
                 StateListDrawable outline = new StateListDrawable();
                 outline.addState(new int[]{android.R.attr.state_focused},
-                    ui.shape(Color.TRANSPARENT, 14, Ui.INK));
-                outline.addState(new int[]{}, ui.shape(Color.TRANSPARENT, 14, 0));
+                    ui.shape(Color.TRANSPARENT, Ui.RADIUS_MEDIA, Ui.INK));
+                outline.addState(new int[]{}, ui.shape(Color.TRANSPARENT, Ui.RADIUS_MEDIA, 0));
                 setForeground(outline);
             }
 
             FrameLayout cover = ui.videoPreview(host.isTv());
-            cover.setBackground(ui.shape(0xff302633, 14, 0));
+            cover.setBackground(ui.shape(0xff302633, Ui.RADIUS_MEDIA, 0));
             cover.setClipToOutline(true);
             image = new ImageView(getContext());
             image.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -405,12 +410,14 @@ final class FeedScreen {
             placeholder = ui.label("", 35, Ui.ACCENT, true);
             placeholder.setGravity(Gravity.CENTER);
             cover.addView(placeholder, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
-            playBadge = ui.label(getContext().getString(R.string.placeholder_video), 15, Ui.INK, true);
-            playBadge.setGravity(Gravity.CENTER);
-            playBadge.setBackground(ui.shape(0xe61a141b, 10, 0));
-            FrameLayout.LayoutParams corner = new FrameLayout.LayoutParams(ui.dp(38), ui.dp(32),
+            playBadge = new FrameLayout(getContext());
+            playBadge.setBackground(ui.shape(0xd91a141b, Ui.RADIUS_PILL, 0));
+            ImageView playIcon = ui.icon(R.drawable.ic_play, 16, Ui.INK);
+            playBadge.addView(playIcon, new FrameLayout.LayoutParams(ui.dp(16), ui.dp(16), Gravity.CENTER));
+            playBadge.setContentDescription(getContext().getString(R.string.placeholder_video));
+            FrameLayout.LayoutParams corner = new FrameLayout.LayoutParams(ui.dp(40), ui.dp(40),
                 Gravity.BOTTOM | Gravity.END);
-            corner.setMargins(0, 0, ui.dp(8), ui.dp(8));
+            corner.setMargins(0, 0, ui.dp(10), ui.dp(10));
             cover.addView(playBadge, corner);
             progress = new ProgressBar(getContext(), null, android.R.attr.progressBarStyleHorizontal);
             progress.setMax(100);
@@ -421,15 +428,23 @@ final class FeedScreen {
             addView(cover, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
 
             LinearLayout meta = ui.column();
-            meta.setPadding(ui.dp(12), ui.dp(10), ui.dp(12), ui.dp(10));
-            title = ui.label("", host.isTv() ? 16 : 15, Ui.INK, true);
-            title.setLines(2);
+            meta.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(14));
+            title = ui.label("", host.isTv() ? 17 : 16, Ui.INK, true);
+            title.setMaxLines(2);
+            title.setLineSpacing(ui.dp(2), 1f);
             title.setEllipsize(TextUtils.TruncateAt.END);
             meta.addView(title);
-            author = ui.label("", 12, Ui.ACCENT, true);
+            LinearLayout authorRow = ui.row();
+            authorRow.setGravity(Gravity.CENTER_VERTICAL);
+            View dot = new View(getContext());
+            dot.setBackground(ui.shape(Ui.ACCENT, Ui.RADIUS_PILL, 0));
+            authorRow.addView(dot, new LinearLayout.LayoutParams(ui.dp(5), ui.dp(5)));
+            author = ui.label("", 12, Ui.MUTED, false);
             author.setSingleLine(true);
             author.setEllipsize(TextUtils.TruncateAt.END);
-            ui.margin(meta, author, Ui.MATCH, Ui.WRAP, 4);
+            author.setPadding(ui.dp(7), 0, 0, 0);
+            authorRow.addView(author, new LinearLayout.LayoutParams(0, Ui.WRAP, 1));
+            ui.margin(meta, authorRow, Ui.MATCH, Ui.WRAP, 6);
             addView(meta);
             ui.makeAction(this, () -> host.showPost(post));
         }

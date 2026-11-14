@@ -224,7 +224,7 @@ final class PlayerScreen {
         streamStats = ui.label("", tv ? 15 : 12, Color.WHITE, false);
         streamStats.setTypeface(android.graphics.Typeface.MONOSPACE);
         streamStats.setPadding(ui.dp(12), ui.dp(8), ui.dp(12), ui.dp(8));
-        streamStats.setBackground(ui.shape(0xdb141414, 10, 0));
+        streamStats.setBackground(ui.shape(0xdb141414, Ui.RADIUS_CONTROL, 0));
         streamStats.setVisibility(View.GONE);
         FrameLayout.LayoutParams statsPosition = new FrameLayout.LayoutParams(Ui.WRAP, Ui.WRAP,
             Gravity.TOP | Gravity.START);

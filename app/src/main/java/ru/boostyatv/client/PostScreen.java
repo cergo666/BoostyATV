@@ -103,7 +103,7 @@ final class PostScreen {
                 }
                 case "image" -> {
                     ImageView photo = ui.image(block.image(), ImageView.ScaleType.FIT_CENTER);
-                    photo.setBackground(ui.shape(ui.surface, 12, 0));
+                    photo.setBackground(ui.shape(ui.surface, Ui.RADIUS_MEDIA, 0));
                     photo.setClipToOutline(true);
                     ui.margin(article, photo, Ui.MATCH, ui.dp(tv ? 290 : 230), 14);
                 }
@@ -112,7 +112,7 @@ final class PostScreen {
                         FrameLayout preview = ui.videoPreview(tv);
                         preview.addView(ui.image(block.image(), ImageView.ScaleType.FIT_CENTER),
                             new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
-                        preview.setBackground(ui.shape(ui.surface, 12, 0));
+                        preview.setBackground(ui.shape(ui.surface, Ui.RADIUS_MEDIA, 0));
                         preview.setClipToOutline(true);
                         ui.margin(article, preview, Ui.MATCH, Ui.WRAP, 14);
                     }
