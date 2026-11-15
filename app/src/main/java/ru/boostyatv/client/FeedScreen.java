@@ -243,6 +243,7 @@ final class FeedScreen {
     }
 
     void reload() {
+        pendingScroll = -1;
         List<String> active = new ArrayList<>();
         if (!search.isEmpty()) active.add(context.getString(R.string.feed_filter_search, search));
         if (channelTags != null) {
@@ -284,7 +285,8 @@ final class FeedScreen {
 
     private void maybeLoadMore() {
         if (!list.isAttachedToWindow() || loading || failed || next.isEmpty()) return;
-        if (visible.isEmpty() || layout.findLastVisibleItemPosition() >= visible.size()) load(next);
+        if (pendingScroll > visible.size() || visible.isEmpty()
+            || layout.findLastVisibleItemPosition() >= visible.size()) load(next);
     }
 
     void load(String offset) {
@@ -297,7 +299,8 @@ final class FeedScreen {
         String tags = String.join(",", selectedTags);
         host.readInBackground(() -> host.api().posts(author, offset, query, tags), page -> {
             if (requestGeneration != generation) return;
-            int previous = visible.size();            for (Post post : page.posts()) {
+            int previous = visible.size();
+            for (Post post : page.posts()) {
                 if (seen.add(post.id())) {
                     loaded.add(post);
                     if (matches(post)) visible.add(post);
@@ -309,8 +312,8 @@ final class FeedScreen {
             int added = visible.size() - previous;
             if (added > 0) rows.notifyItemRangeInserted(previous + 1, added);
             rows.notifyItemChanged(Math.max(0, rows.getItemCount() - 1));
-            if (pendingScroll >= 0) {
-                layout.scrollToPosition(pendingScroll);
+            if (pendingScroll >= 0 && (pendingScroll <= visible.size() || next.isEmpty())) {
+                layout.scrollToPosition(Math.min(pendingScroll, visible.size()));
                 pendingScroll = -1;
             }
             list.post(this::maybeLoadMore);

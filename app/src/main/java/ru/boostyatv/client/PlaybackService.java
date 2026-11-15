@@ -5,7 +5,7 @@ import android.content.Intent;
 import androidx.media3.common.C;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.exoplayer.ExoPlayer;
-import androidx.media3.exoplayer.SeekParameters;
+import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.session.MediaSession;
@@ -31,7 +31,7 @@ public final class PlaybackService extends MediaSessionService {
         headers.put("Referer", BoostyApi.ORIGIN + "/");
         DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory()
             .setDefaultRequestProperties(headers);
-        player = new ExoPlayer.Builder(this).setMediaSourceFactory(new DefaultMediaSourceFactory(http))
+        player = new ExoPlayer.Builder(this).setMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(this, http)))
             .setSeekBackIncrementMs(10_000).setSeekForwardIncrementMs(10_000).build();
         player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.EXACT);
         player.setWakeMode(C.WAKE_MODE_LOCAL);

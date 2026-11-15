@@ -42,6 +42,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -86,6 +87,7 @@ final class PlayerScreen {
     private Format videoFormat;
     private Format audioFormat;
     private boolean reconnectAttempted;
+    private String mediaId;
 
     private final Runnable savePlaybackTick = new Runnable() {
         @Override public void run() {
@@ -130,9 +132,42 @@ final class PlayerScreen {
             externalVideo = new Post.Block("video", "", "", java.util.Collections.emptyList(),
                 savedState.getString("external_video", ""), 0, savedState.getLong("external_duration"));
         }
+        if (savedState == null || !savedState.containsKey("builtin_media_id")) return;
+        ArrayList<String> urls = savedState.getStringArrayList("builtin_urls");
+        ArrayList<String> types = savedState.getStringArrayList("builtin_types");
+        if (urls == null || types == null || urls.isEmpty() || urls.size() != types.size()) return;
+        List<Post.Source> sources = new ArrayList<>();
+        for (int i = 0; i < urls.size(); i++) sources.add(new Post.Source(types.get(i), urls.get(i)));
+        video = new Post.Block("video", savedState.getString("builtin_title", ""), "", sources,
+            savedState.getString("builtin_video_id", ""), 0, savedState.getLong("builtin_duration"));
+        mediaId = savedState.getString("builtin_media_id");
+        playbackSources = sources;
+        sourceIndex = Math.max(0, Math.min(sources.size() - 1, savedState.getInt("builtin_source")));
+        playbackPosition = savedState.getLong("builtin_position");
+        resumePlayback = savedState.getBoolean("builtin_playing");
+        playbackSpeed = savedState.getFloat("builtin_speed", 1f);
+        renderPlayer();
     }
 
     void saveState(Bundle out) {
+        if (video != null) {
+            ArrayList<String> urls = new ArrayList<>();
+            ArrayList<String> types = new ArrayList<>();
+            for (Post.Source source : playbackSources) {
+                urls.add(source.url());
+                types.add(source.type());
+            }
+            out.putStringArrayList("builtin_urls", urls);
+            out.putStringArrayList("builtin_types", types);
+            out.putString("builtin_media_id", mediaId);
+            out.putString("builtin_video_id", video.videoId());
+            out.putString("builtin_title", video.text());
+            out.putLong("builtin_duration", video.durationMs());
+            out.putInt("builtin_source", sourceIndex);
+            out.putLong("builtin_position", player != null ? player.getCurrentPosition() : playbackPosition);
+            out.putBoolean("builtin_playing", player != null ? player.getPlayWhenReady() : resumePlayback);
+            out.putFloat("builtin_speed", playbackSpeed);
+        }
         if (externalVideo != null && externalApp != null) {
             out.putString("external_player", externalApp.name());
             out.putString("external_video", externalVideo.videoId());
@@ -187,6 +222,7 @@ final class PlayerScreen {
         PlaybackOptions.App app = host.options().player();
         if (app != PlaybackOptions.App.BUILT_IN && launchExternal(block, app)) return;
         video = block;
+        mediaId = java.util.UUID.randomUUID().toString();
         reconnectAttempted = false;
         requestNotificationPermission();
         playbackSpeed = 1f;
@@ -198,6 +234,12 @@ final class PlayerScreen {
         lastWrittenTime = -1;
         playbackStarted = false;
         resumePlayback = true;
+        renderPlayer();
+        startPlayer();
+    }
+
+    @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
+    private void renderPlayer() {
         Ui ui = host.ui();
         boolean tv = host.isTv();
         FrameLayout screen = new FrameLayout(activity) {
@@ -236,7 +278,6 @@ final class PlayerScreen {
         });
         host.replace(screen, true);
         fullscreen(true);
-        startPlayer();
         playerView.showController();
         if (tv) playerView.requestFocus();
     }
@@ -294,13 +335,19 @@ final class PlayerScreen {
                 }
             })
             .buildAsync();
-        Futures.addCallback(pendingController, new FutureCallback<>() {
+        ListenableFuture<MediaController> connection = pendingController;
+        Futures.addCallback(connection, new FutureCallback<>() {
             @Override public void onSuccess(MediaController controller) {
-                activity.runOnUiThread(() -> attachController(controller));
+                if (pendingController != connection) {
+                    controller.release();
+                    return;
+                }
+                attachController(controller);
             }
 
             @Override public void onFailure(Throwable failure) {
                 activity.runOnUiThread(() -> {
+                    if (pendingController != connection) return;
                     pendingController = null;
                     if (video == null || player != null || activity.isFinishing()
                         || activity.isDestroyed()) return;
@@ -315,7 +362,6 @@ final class PlayerScreen {
         pendingController = null;
         if (activity.isDestroyed() || activity.isFinishing()) {
             controller.release();
-            activity.stopService(new Intent(activity, PlaybackService.class));
             return;
         }
         if (video == null || player != null) {
@@ -323,7 +369,13 @@ final class PlayerScreen {
             return;
         }
         player = controller;
-        reconnectAttempted = false;
+        MediaItem current = controller.getCurrentMediaItem();
+        boolean continuing = current != null && mediaId.equals(current.mediaId)
+            && controller.getPlaybackState() != Player.STATE_IDLE;
+        playbackStarted = continuing && (controller.getPlaybackState() == Player.STATE_READY
+            || controller.getPlaybackState() == Player.STATE_ENDED);
+        videoFormat = selectedFormat(controller.getCurrentTracks(), C.TRACK_TYPE_VIDEO);
+        audioFormat = selectedFormat(controller.getCurrentTracks(), C.TRACK_TYPE_AUDIO);
         playerView.setPlayer(controller);
         controller.setPlaybackSpeed(playbackSpeed);
         applyQualityLimit();
@@ -357,12 +409,14 @@ final class PlayerScreen {
                 }
             }
         });
-        prepareSource();
+        if (!continuing) prepareSource();
         scheduleTicks();
     }
 
     private void handleDisconnected(MediaController controller) {
         if (player != controller) return;
+        if (playbackStarted) playbackPosition = controller.getCurrentPosition();
+        resumePlayback = controller.getPlayWhenReady();
         player = null;
         handler.removeCallbacks(savePlaybackTick);
         handler.removeCallbacks(refreshStreamStats);
@@ -394,7 +448,7 @@ final class PlayerScreen {
 
     private void prepareSource() {
         Post.Source source = playbackSources.get(sourceIndex);
-        MediaItem.Builder item = new MediaItem.Builder().setUri(source.url());
+        MediaItem.Builder item = new MediaItem.Builder().setMediaId(mediaId).setUri(source.url());
         if (source.type().contains("hls")) item.setMimeType(MimeTypes.APPLICATION_M3U8);
         else if (source.type().contains("dash")) item.setMimeType(MimeTypes.APPLICATION_MPD);
         player.setMediaItem(item.build(), playbackPosition);

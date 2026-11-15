@@ -46,11 +46,11 @@ public final class MainActivity extends ComponentActivity
     @Override public void openPlayer(Post.Block block) { playerScreen.open(block); }
     @Override public boolean updating() { return updates.isUpdating(); }
     @Override public UpdateController updates() { return updates; }
-    @Override public void refreshFeed() { showFeed(null, null, false); }
+    @Override public void refreshFeed() { if (currentFeed != null) currentFeed.reload(); }
     @Override public void clearSession() { clearSessionScreen(); }
     @Override public void reopenSettings() { reopenSettings = true; recreate(); }
     @Override public View currentScreen() { return host.getChildAt(0); }
-    @Override public void onSignedIn() { watchHistory.clear(); navigator.clear(); }
+    @Override public void onSignedIn() { watchHistory.clear(); navigator.clear(); java.util.Arrays.fill(tabs, null); }
     private static final int MATCH = Ui.MATCH;
     private static final int WRAP = Ui.WRAP;
     private Ui ui;
@@ -95,7 +95,6 @@ public final class MainActivity extends ComponentActivity
         playbackOptions = new PlaybackOptions(this);
         ui = new Ui(this, artwork, playbackOptions.oled(), tv, () -> !busy);
         playerScreen = new PlayerScreen(this, this);
-        playerScreen.restoreState(savedState);
         updates = new UpdateController(this, () -> foreground && !busy && !playerScreen.hasVideo());
         loginScreen = new LoginScreen(this, this);
         if (playbackOptions.oled()) {
@@ -125,6 +124,7 @@ public final class MainActivity extends ComponentActivity
             reopenSettings = false;
             showSettings();
         }
+        if (api.hasSession()) playerScreen.restoreState(savedState);
         if (!BuildConfig.DEBUG) updates.check(null);
     }
 
@@ -180,13 +180,16 @@ public final class MainActivity extends ComponentActivity
             screen.addView(ui.bottomNav(0, tab(0, () -> showFeed(null, null, true)),
                 tab(1, this::showAuthors), tab(2, this::showSettings), tab(3, this::showAccount)));
         }
-        currentFeed = feed;
+        screen.setTag(R.id.feed_screen, feed);
         replace(screen, push);
         feed.load("");
         if (home) syncWatchProgress();
     }
 
     private FeedScreen currentFeed;
+    private FeedScreen lastFeed;
+    private final View[] tabs = new View[4];
+    private boolean selectingTab;
     private int pendingFeedScroll = -1;
     private int activeTab = -1;
 
@@ -266,12 +269,12 @@ public final class MainActivity extends ComponentActivity
         super.onSaveInstanceState(out);
         out.putBoolean("reopen_settings", reopenSettings);
         playerScreen.saveState(out);
-        if (currentFeed != null) {
+        if (lastFeed != null) {
             out.putBoolean("feed_route", true);
-            out.putString("feed_slug", currentFeed.author());
-            out.putString("feed_name", currentFeed.title());
-            if (currentFeed.unfiltered()) {
-                out.putInt("feed_scroll", currentFeed.scrollPosition());
+            out.putString("feed_slug", lastFeed.author());
+            out.putString("feed_name", lastFeed.title());
+            if (lastFeed.unfiltered()) {
+                out.putInt("feed_scroll", lastFeed.scrollPosition());
             }
         }
     }
@@ -333,7 +336,19 @@ public final class MainActivity extends ComponentActivity
     /** Bottom-nav selection: repeated taps on the active tab do nothing. */
     private Runnable tab(int index, Runnable action) {
         return () -> {
-            if (activeTab != index) action.run();
+            if (activeTab == index) return;
+            navigator.clear();
+            if (index != 0 && tabs[0] != null) navigator.push(tabs[0]);
+            if (tabs[index] != null) {
+                replace(tabs[index], false);
+                return;
+            }
+            selectingTab = true;
+            try {
+                action.run();
+            } finally {
+                selectingTab = false;
+            }
         };
     }
 
@@ -370,6 +385,8 @@ public final class MainActivity extends ComponentActivity
         navigator.clear();
         watchHistory.clear();
         currentFeed = null;
+        lastFeed = null;
+        java.util.Arrays.fill(tabs, null);
         pendingFeedScroll = -1;
         BoostyWebLogin.clearCredentials();
         showLogin();
@@ -417,13 +434,16 @@ public final class MainActivity extends ComponentActivity
 
     @Override public void replace(View view, boolean push) {
         host.post(updates::showStartupUpdate);
-        if (push && host.getChildCount() != 0) {
+        if (push && !selectingTab && host.getChildCount() != 0) {
             navigator.push(host.getChildAt(0));
         }
         host.removeAllViews();
         host.addView(view, new FrameLayout.LayoutParams(MATCH, MATCH));
         Object tab = view.getTag(R.id.nav_tab);
         activeTab = tab instanceof Integer value ? value : -1;
+        if (activeTab >= 0) tabs[activeTab] = view;
+        currentFeed = view.getTag(R.id.feed_screen) instanceof FeedScreen feed ? feed : null;
+        if (currentFeed != null) lastFeed = currentFeed;
         back.setEnabled(!navigator.isEmpty() || (loginScreen != null && loginScreen.hasState()));
     }
 }

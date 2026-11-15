@@ -165,6 +165,10 @@ final class UpdateController {
             updating = false;
             downloading = false;
             dismissDownload();
+            if (installCancelled) {
+                status(status, activity.getString(R.string.update_download_cancelled));
+                return;
+            }
             if (!isNewerPackage(apk)) {
                 status(status, activity.getString(R.string.update_verification_failed));
                 return;

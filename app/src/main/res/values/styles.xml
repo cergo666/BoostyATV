@@ -3,6 +3,7 @@
     <item type="id" name="artwork_url" />
     <item type="id" name="settings_value" />
     <item type="id" name="nav_tab" />
+    <item type="id" name="feed_screen" />
     <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowBackground">#101015</item>
