@@ -11,8 +11,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
-record Post(String id, String title, String author, String slug, long published, boolean allowed,
+record Post(String id, String title, String author, String slug, String authorAvatar, long published, boolean allowed,
             String cover, List<Block> blocks, boolean commentsDenied, boolean reactionsDisabled, Reactions reactions) {
     static final String UNTITLED = "";
     record Block(String kind, String text, String image, List<Source> sources,
@@ -32,15 +33,19 @@ record Post(String id, String title, String author, String slug, long published,
     }
 
     static List<Post> parseList(JSONArray items) {
+        return parseList(items, Map.of());
+    }
+
+    static List<Post> parseList(JSONArray items, Map<String, String> avatars) {
         List<Post> posts = new ArrayList<>();
         for (int i = 0; i < items.length(); i++) {
             JSONObject item = items.optJSONObject(i);
-            if (item != null && !string(item, "id").trim().isEmpty()) posts.add(parse(item));
+            if (item != null && !string(item, "id").trim().isEmpty()) posts.add(parse(item, avatars));
         }
         return posts;
     }
 
-    private static Post parse(JSONObject item) {
+    private static Post parse(JSONObject item, Map<String, String> avatars) {
         boolean allowed = item.optBoolean("hasAccess", true);
         List<Block> blocks = blocks(item.optJSONArray(allowed ? "data" : "teaser"), allowed);
         List<Block> teaser = blocks(item.optJSONArray("teaser"), false);
@@ -64,9 +69,19 @@ record Post(String id, String title, String author, String slug, long published,
                 title = title.substring(0, title.offsetByCodePoints(0, 92)).trim() + "…";
             }
         }
-        return new Post(string(item, "id"), title, string(author, "name"), string(author, "blogUrl"),
+        JSONObject blog = item.optJSONObject("blog");
+        String slug = string(author, "blogUrl");
+        if (slug.isEmpty()) slug = string(blog, "blogUrl");
+        String avatar = avatar(author);
+        if (avatar.isEmpty() && blog != null) avatar = avatar(blog.optJSONObject("owner"));
+        if (avatar.isEmpty()) avatar = avatars.getOrDefault(slug, "");
+        return new Post(string(item, "id"), title, string(author, "name"), slug, avatar,
             item.optLong("publishTime", item.optLong("createdAt")), allowed, cover, blocks,
             item.optBoolean("isCommentsDenied"), item.optBoolean("reactionsDisabled"), Reactions.parse(item));
+    }
+
+    static String avatar(JSONObject owner) {
+        return https(string(owner, "avatarUrl").trim());
     }
 
     static List<Block> blocks(JSONArray data, boolean allowed) {

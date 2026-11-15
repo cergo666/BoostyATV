@@ -12,7 +12,7 @@ public final class FeedFilterTest {
         Post.Block block = video
             ? new Post.Block("video", "", "", List.of(new Post.Source("hls", "https://cdn.example.com/m.m3u8")))
             : new Post.Block("text", "hello", "", List.of());
-        return new Post("id", title, "author", "slug", 0, true, "", List.of(block), false, false,
+        return new Post("id", title, "author", "slug", "", 0, true, "", List.of(block), false, false,
             new Reactions("", new java.util.LinkedHashMap<>()));
     }
 

@@ -98,4 +98,14 @@ public final class PostTest {
         assertEquals("ok", posts.get(0).id());
         assertTrue(posts.get(0).blocks().isEmpty());
     }
+    @Test public void avatarFallsBackToBlogMetadataWhenThePostAvatarIsMissing() throws Exception {
+        var posts = Post.parseList(new org.json.JSONArray("""
+            [{"id":"1","user":{"blogUrl":"channel","avatarUrl":"http://example.com/insecure.png"}},
+             {"id":"2","user":{"blogUrl":"other"}},
+             {"id":"3","blog":{"blogUrl":"nested","owner":{"avatarUrl":"https://example.com/nested.png"}}}]
+            """), java.util.Map.of("channel", "https://example.com/channel.png"));
+        assertEquals("https://example.com/channel.png", posts.get(0).authorAvatar());
+        assertEquals("", posts.get(1).authorAvatar());
+        assertEquals("https://example.com/nested.png", posts.get(2).authorAvatar());
+    }
 }

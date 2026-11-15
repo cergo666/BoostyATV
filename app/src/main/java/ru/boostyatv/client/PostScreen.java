@@ -199,7 +199,15 @@ final class PostScreen {
             author += "  ·  " + DateFormat.getDateInstance(DateFormat.MEDIUM, locale)
                 .format(new Date(comment.created() * 1000L));
         }
-        item.addView(ui.label(author, 14, Ui.ACCENT, true));
+        LinearLayout authorRow = ui.row();
+        authorRow.setGravity(Gravity.CENTER_VERTICAL);
+        Ui.Avatar avatar = ui.new Avatar(host.isTv() ? 36 : 30);
+        avatar.bind(comment.authorAvatar());
+        authorRow.addView(avatar);
+        TextView authorName = ui.label(author, 14, Ui.ACCENT, true);
+        authorName.setPaddingRelative(ui.dp(10), 0, 0, 0);
+        authorRow.addView(authorName, new LinearLayout.LayoutParams(0, Ui.WRAP, 1));
+        item.addView(authorRow);
         for (Post.Block block : comment.blocks()) {
             if (block.kind().equals("text")) {
                 ui.margin(item, ui.label(block.text(), 16, Ui.INK, false), Ui.MATCH, Ui.WRAP, 7);

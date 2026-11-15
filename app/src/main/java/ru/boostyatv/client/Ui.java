@@ -165,6 +165,26 @@ final class Ui {
         segment.setSelected(selected);
     }
 
+    /** Decorative avatar with a placeholder visible until artwork is loaded. */
+    final class Avatar extends FrameLayout {
+        private final ImageView photo = new ImageView(context);
+
+        Avatar(int size) {
+            super(Ui.this.context);
+            setBackground(shape(focusedSurface, size, 0));
+            setClipToOutline(true);
+            setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            ImageView placeholder = icon(R.drawable.ic_person, size / 2, MUTED);
+            addView(placeholder, new FrameLayout.LayoutParams(dp(size / 2), dp(size / 2), Gravity.CENTER));
+            addView(photo, new FrameLayout.LayoutParams(MATCH, MATCH));
+            setLayoutParams(new LinearLayout.LayoutParams(dp(size), dp(size)));
+        }
+
+        void bind(String url) {
+            bindImage(photo, url, ImageView.ScaleType.CENTER_CROP);
+        }
+    }
+
     ImageView image(String url, ImageView.ScaleType scale) {
         ImageView view = new ImageView(context);
         bindImage(view, url, scale);

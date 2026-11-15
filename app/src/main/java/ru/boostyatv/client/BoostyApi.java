@@ -53,7 +53,7 @@ final class BoostyApi {
     record Author(String slug, String name, String image) {}
     record Authors(List<Author> items, int next) {}
     record Tag(String id, String name) {}
-    record Comment(long id, String reactionId, String author, long created, List<Post.Block> blocks,
+    record Comment(long id, String reactionId, String author, String authorAvatar, long created, List<Post.Block> blocks,
                    int replyCount, Reactions reactions) {}
     record Comments(List<Comment> items, String next) {}
     record AccessSession(String access, long expiry, String device) {}
@@ -144,10 +144,14 @@ final class BoostyApi {
         JSONObject result = authenticated(path + query);
         JSONObject data = result.optJSONObject("data");
         JSONArray blogs = data == null ? null : data.optJSONArray("blogs");
+        Map<String, String> avatars = new HashMap<>();
         if (blogs != null) for (int i = 0; i < blogs.length(); i++) {
             JSONObject blog = blogs.optJSONObject(i);
             String slug = Post.string(blog, "blogUrl");
-            if (!slug.isEmpty() && (blog.has("allowedReactionList") || blog.optBoolean("reactionsDisabled"))) {
+            if (slug.isEmpty()) continue;
+            String avatar = Post.avatar(blog.optJSONObject("owner"));
+            if (!avatar.isEmpty()) avatars.put(slug, avatar);
+            if (blog.has("allowedReactionList") || blog.optBoolean("reactionsDisabled")) {
                 reactionTypes.put(slug, Reactions.allowed(blog));
             }
         }
@@ -164,7 +168,7 @@ final class BoostyApi {
         }
         JSONObject extra = result.optJSONObject("extra");
         String next = extra == null || extra.optBoolean("isLast") ? "" : Post.string(extra, "offset");
-        return new Page(Post.parseList(rows), next.equals(offset) ? "" : next);
+        return new Page(Post.parseList(rows, avatars), next.equals(offset) ? "" : next);
     }
 
     synchronized List<Tag> tags(String author) throws Exception {
@@ -190,7 +194,9 @@ final class BoostyApi {
         for (int i = 0; i < rows.length(); i++) {
             JSONObject row = rows.optJSONObject(i);
             if (row == null || row.optBoolean("isDeleted") || row.optBoolean("isBlocked")) continue;
-            comments.add(new Comment(row.optLong("intId"), Post.string(row, "id"), Post.string(row.optJSONObject("author"), "name"),
+            JSONObject author = row.optJSONObject("author");
+            comments.add(new Comment(row.optLong("intId"), Post.string(row, "id"), Post.string(author, "name"),
+                Post.avatar(author),
                 row.optLong("createdAt"), Post.blocks(row.optJSONArray("data"), false), row.optInt("replyCount"), Reactions.parse(row)));
         }
         JSONObject extra = result.optJSONObject("extra");

@@ -383,6 +383,7 @@ final class FeedScreen {
         private final FrameLayout playBadge;
         private final ProgressBar progress;
         private final TextView author;
+        private final Ui.Avatar avatar;
         private final TextView title;
         private final Runnable refreshProgress = this::updateProgress;
         private Post post;
@@ -439,9 +440,8 @@ final class FeedScreen {
             meta.addView(title);
             LinearLayout authorRow = ui.row();
             authorRow.setGravity(Gravity.CENTER_VERTICAL);
-            View dot = new View(getContext());
-            dot.setBackground(ui.shape(Ui.ACCENT, Ui.RADIUS_PILL, 0));
-            authorRow.addView(dot, new LinearLayout.LayoutParams(ui.dp(5), ui.dp(5)));
+            avatar = ui.new Avatar(host.isTv() ? 30 : 24);
+            authorRow.addView(avatar);
             author = ui.label("", 12, Ui.MUTED, false);
             author.setSingleLine(true);
             author.setEllipsize(TextUtils.TruncateAt.END);
@@ -463,6 +463,7 @@ final class FeedScreen {
             playBadge.setVisibility(post.hasVideo() ? VISIBLE : GONE);
             progress.setVisibility(post.hasVideo() ? VISIBLE : GONE);
             title.setText(post.displayTitle(getContext()));
+            avatar.bind(post.authorAvatar());
             author.setText(post.author().isEmpty()
                 ? getContext().getString(R.string.post_app_name) : post.author());
             setContentDescription(post.displayTitle(getContext()) + ", " + author.getText()

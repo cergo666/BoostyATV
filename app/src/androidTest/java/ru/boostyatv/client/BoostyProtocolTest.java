@@ -191,7 +191,7 @@ public final class BoostyProtocolTest {
                     assertTrue(path.contains("tags_ids=1%2C2"));
                     return new JSONObject("""
                         {"data":{"searchPosts":[{"post":{"id":"test-post","title":"Video title","hasAccess":true,
-                          "user":{"blogUrl":"author"},"data":[{"type":"ok_video","id":"video-id","timeCode":341,
+                          "user":{"blogUrl":"author","avatarUrl":"https://img.example.com/channel.png"},"data":[{"type":"ok_video","id":"video-id","timeCode":341,
                           "duration":600,"playerUrls":[{"type":"high","url":"https://media.example.com/video.mp4"}]}]}}]},
                           "extra":{"isLast":true}}
                         """);
@@ -209,7 +209,7 @@ public final class BoostyProtocolTest {
                     assertTrue(path.contains("parent_id=123"));
                     assertTrue(path.contains("offset=cursor%2B1"));
                     return new JSONObject("""
-                        {"data":[{"id":"reply","intId":456,"author":{"name":"Reader"},
+                        {"data":[{"id":"reply","intId":456,"author":{"name":"Reader","avatarUrl":"https://img.example.com/reader.png"},
                         "data":[{"type":"text","content":"A reply"}]}],"extra":{"isLast":true}}
                         """);
                 }
@@ -231,7 +231,9 @@ public final class BoostyProtocolTest {
             assertEquals(341_000L, video.positionMs());
             assertEquals(600_000L, video.durationMs());
             assertEquals("1", api.tags("author").get(0).id());
+            assertEquals("https://img.example.com/channel.png", post.authorAvatar());
             var reply = api.comments(post, 123, "cursor+1").items().get(0);
+            assertEquals("https://img.example.com/reader.png", reply.authorAvatar());
             assertEquals("A reply", reply.blocks().get(0).text());
             assertEquals(456, reply.id());
             assertEquals("reply", reply.reactionId());
