@@ -43,7 +43,7 @@ public final class MainActivity extends ComponentActivity
     @Override public boolean busy() { return busy; }
     @Override public void back() { goBack(); }
     @Override public void refreshLabels() { refreshRegistered(host); }
-    @Override public void openPlayer(Post.Block block) { playerScreen.open(block); }
+    @Override public void openPlayer(Post.Block block, boolean fromStart) { playerScreen.open(block, fromStart); }
     @Override public boolean updating() { return updates.isUpdating(); }
     @Override public UpdateController updates() { return updates; }
     @Override public void refreshFeed() { if (currentFeed != null) currentFeed.reload(); }

@@ -98,7 +98,7 @@
     <!-- Post -->
     <string name="post_title">Post</string>
     <string name="post_access_required">Access to this publication requires Boosty access.</string>
-    <string name="post_watch_video">Watch video</string>
+    <string name="post_play_from_start">Play from beginning</string>
     <string name="post_continue_watching">Continue from %s</string>
     <string name="post_video_unavailable">Video not available yet.</string>
     <string name="post_comments">Comments</string>
@@ -115,7 +115,6 @@
     <string name="post_reaction_load_failed">Failed to load channel reactions.</string>
     <string name="post_reaction_disabled">Reactions disabled by author.</string>
     <string name="post_reaction_save_failed">Boosty did not save reaction. Try again.</string>
-    <string name="post_video_play_with_title">▶  %s</string>
 
     <!-- Player -->
     <string name="player_settings">Video settings</string>

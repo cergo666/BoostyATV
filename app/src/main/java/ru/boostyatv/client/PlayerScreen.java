@@ -218,9 +218,10 @@ final class PlayerScreen {
     }
 
     @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
-    void open(Post.Block block) {
+    void open(Post.Block block, boolean fromStart) {
         PlaybackOptions.App app = host.options().player();
-        if (app != PlaybackOptions.App.BUILT_IN && launchExternal(block, app)) return;
+        long position = fromStart ? 0 : host.history().get(block).resume();
+        if (app != PlaybackOptions.App.BUILT_IN && launchExternal(block, app, position)) return;
         video = block;
         mediaId = java.util.UUID.randomUUID().toString();
         reconnectAttempted = false;
@@ -230,7 +231,7 @@ final class PlayerScreen {
         audioFormat = null;
         playbackSources = host.options().sources(block);
         sourceIndex = 0;
-        playbackPosition = host.history().get(block).resume();
+        playbackPosition = position;
         lastWrittenTime = -1;
         playbackStarted = false;
         resumePlayback = true;
@@ -292,9 +293,8 @@ final class PlayerScreen {
         fullscreen(false);
     }
 
-    private boolean launchExternal(Post.Block block, PlaybackOptions.App app) {
+    private boolean launchExternal(Post.Block block, PlaybackOptions.App app, long position) {
         Post.Source source = host.options().sources(block).get(0);
-        long position = host.history().get(block).resume();
         Intent intent = app.intent(source, block.text(), position);
         if (app == PlaybackOptions.App.VIMU && intent.resolveActivity(activity.getPackageManager()) == null) {
             intent.setPackage(PlaybackOptions.VIMU_RUSTORE);

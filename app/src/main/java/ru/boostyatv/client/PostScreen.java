@@ -34,7 +34,7 @@ final class PostScreen {
         void replace(View view, boolean push);
         void back();
         void refreshLabels();
-        void openPlayer(Post.Block block);
+        void openPlayer(Post.Block block, boolean fromStart);
         <T> void readInBackground(Callable<T> request, Consumer<T> done, Consumer<Exception> failed);
     }
 
@@ -120,17 +120,19 @@ final class PostScreen {
                         ui.margin(article, ui.label(context.getString(R.string.post_video_unavailable),
                             15, Ui.MUTED, false), Ui.MATCH, Ui.WRAP, 8);
                     } else {
-                        String name = block.text().isEmpty()
-                            ? context.getString(R.string.post_watch_video)
-                            : context.getString(R.string.post_video_play_with_title, block.text());
-                        TextView play = ui.button(name, true, () -> host.openPlayer(block));
+                        String startLabel = context.getString(R.string.post_play_from_start);
+                        TextView play = ui.button(startLabel, true, () -> host.openPlayer(block, false));
+                        TextView restart = ui.button(startLabel, false, () -> host.openPlayer(block, true));
+                        restart.setVisibility(View.GONE);
                         Ui.onAttach(play, () -> {
                             long position = host.history().get(block).resume();
                             play.setText(position > 0
                                 ? context.getString(R.string.post_continue_watching,
-                                    TimeFormat.format(context, position)) : name);
+                                    TimeFormat.format(context, position)) : startLabel);
+                            restart.setVisibility(position > 0 ? View.VISIBLE : View.GONE);
                         });
                         ui.margin(article, play, Ui.MATCH, ui.dp(49), 8);
+                        ui.margin(article, restart, Ui.MATCH, ui.dp(44), 6);
                         if (firstVideo == null) firstVideo = play;
                     }
                 }
@@ -250,9 +252,8 @@ final class PostScreen {
             Reactions state = localReactions.getOrDefault(target, initial);
             List<String> totals = new ArrayList<>();
             String selected = context.getString(R.string.post_reaction_button);
-            for (Reactions.Type type : Reactions.Type.values()) {
-                int count = state.count(type);
-                if (count > 0) totals.add(type.emoji + " " + count);
+            for (Reactions.Type type : state.rankedTypes()) {
+                totals.add(type.emoji + "\u00a0" + state.count(type));
                 if (type.code.equals(state.selected())) selected = type.emoji + " " + type.label(context);
             }
             change.setText(selected);

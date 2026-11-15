@@ -83,6 +83,12 @@ record Reactions(String selected, Map<String, Integer> counts) {
         return value;
     }
 
+    List<Type> rankedTypes() {
+        return Arrays.stream(Type.values()).filter(type -> count(type) > 0)
+            .sorted(java.util.Comparator.comparingInt(this::count).reversed())
+            .collect(java.util.stream.Collectors.toList());
+    }
+
     Reactions withSelected(String choice) {
         if (selected.equals(choice)) return this;
         Map<String, Integer> updated = new LinkedHashMap<>(counts);

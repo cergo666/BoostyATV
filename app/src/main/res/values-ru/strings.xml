@@ -98,7 +98,7 @@
     <!-- Post -->
     <string name="post_title">Публикация</string>
     <string name="post_access_required">Для этой публикации нужен доступ на Boosty.</string>
-    <string name="post_watch_video">Смотреть видео</string>
+    <string name="post_play_from_start">Воспроизвести с начала</string>
     <string name="post_continue_watching">Продолжить с %s</string>
     <string name="post_video_unavailable">Видео пока недоступно.</string>
     <string name="post_comments">Комментарии</string>
@@ -115,7 +115,6 @@
     <string name="post_reaction_load_failed">Не удалось загрузить реакции канала.</string>
     <string name="post_reaction_disabled">Реакции отключены автором.</string>
     <string name="post_reaction_save_failed">Boosty не сохранил реакцию. Попробуйте ещё раз.</string>
-    <string name="post_video_play_with_title">▶  %s</string>
 
     <!-- Player -->
     <string name="player_settings">Настройки видео</string>

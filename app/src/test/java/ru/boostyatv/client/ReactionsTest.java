@@ -35,6 +35,14 @@ public final class ReactionsTest {
         assertEquals(2, removed.count(Reactions.Type.FIRE));
     }
 
+    @Test public void sortsNonZeroReactionsByCountAndReordersAfterAChange() {
+        var initial = new Reactions("", java.util.Map.of("like", 4, "fire", 4, "heart", 5));
+        assertEquals(java.util.List.of(Reactions.Type.HEART, Reactions.Type.LIKE, Reactions.Type.FIRE),
+            initial.rankedTypes());
+        assertEquals(java.util.List.of(Reactions.Type.LIKE, Reactions.Type.HEART, Reactions.Type.FIRE),
+            initial.withSelected("like").rankedTypes());
+    }
+
     @Test public void allowedReactionsRespectChannelSettings() throws Exception {
         assertTrue(Reactions.allowed(new JSONObject().put("reactionsDisabled", true)).isEmpty());
         assertEquals(8, Reactions.allowed(new JSONObject()).size());
