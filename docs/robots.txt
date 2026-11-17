@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://cergo666.github.io/BoostyATV/sitemap.xml

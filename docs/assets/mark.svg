@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" role="img" aria-label="Boosty ATV">
+  <rect width="108" height="108" rx="26" fill="#241922"/>
+  <circle cx="54" cy="54" r="43" fill="#38232C"/>
+  <path fill="#FF8258" d="M35 27h13v20c4-4 10-6 16-6c13 0 23 10 23 23c0 14-10 24-24 24h-8c-12 0-20-8-20-20z"/>
+  <path fill="#FFF3E9" d="M55 53l17 11l-17 11z"/>
+  <path fill="#FFB291" d="M35 27h13v8H35z"/>
+</svg>

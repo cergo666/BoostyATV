@@ -6,7 +6,7 @@
 [![Сборка](https://github.com/cergo666/BoostyATV/actions/workflows/android.yml/badge.svg)](https://github.com/cergo666/BoostyATV/actions/workflows/android.yml)
 [![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android)](https://github.com/cergo666/BoostyATV/releases/latest)
 
-**[Скачать APK](https://github.com/cergo666/BoostyATV/releases/latest/download/BoostyATV.apk)** · [История изменений](CHANGELOG.md)
+**[Сайт](https://cergo666.github.io/BoostyATV/)** · **[Скачать APK](https://github.com/cergo666/BoostyATV/releases/latest/download/BoostyATV.apk)** · [История изменений](CHANGELOG.md)
 
 Неофициальный клиент Boosty для телефона и Android TV. Один APK для Android 8.0 и новее.
 
@@ -30,7 +30,7 @@
 
 <img src="docs/screenshots/feed-phone.png" alt="Лента на телефоне в портретной ориентации" width="280">
 
-<img src="docs/screenshots/feed-landscape.png" alt="Лента на телефоне в альбомной ориентации" width="720">
+<img src="docs/screenshots/feed-landscape.png" alt="Лента Boosty ATV на Android TV" width="720">
 
 ## Вход и подключение ТВ
 
