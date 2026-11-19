@@ -53,13 +53,11 @@ public final class ScreenRegressionTest {
                 assertSame(homeFeed, get(activity, "currentFeed"));
                 activity.refreshFeed();
                 activity.showSettings();
-                String homeLabel = activity.getString(R.string.nav_home);
+                String homeLabel = activity.getString(activity.isTv() ? R.string.feed_subscriptions : R.string.nav_home);
                 View homeTab = findTab(activity.currentScreen(), homeLabel);
-                if (!activity.isTv()) {
-                    assertNotNull(homeTab);
-                    homeTab.performClick();
-                    assertSame(home, activity.currentScreen());
-                }
+                assertNotNull(homeTab);
+                homeTab.performClick();
+                assertSame(home, activity.currentScreen());
             });
             assertTrue("Home must reload rather than the hidden channel", homeRefreshed.await(5, TimeUnit.SECONDS));
         } finally {

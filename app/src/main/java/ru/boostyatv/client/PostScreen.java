@@ -5,6 +5,7 @@ import android.content.Context;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -34,7 +35,8 @@ final class PostScreen {
         void replace(View view, boolean push);
         void back();
         void refreshLabels();
-        void openPlayer(Post.Block block, boolean fromStart);
+        void openPlayer(Post post, Post.Block block, boolean fromStart);
+        void showTag(Post post, BoostyApi.Tag tag);
         <T> void readInBackground(Callable<T> request, Consumer<T> done, Consumer<Exception> failed);
     }
 
@@ -71,89 +73,156 @@ final class PostScreen {
     }
 
     private void build() {
-        LinearLayout bar = ui.toolbar(context.getString(R.string.post_title), true, host::back);
-        screen.addView(bar);
-        LinearLayout article = ui.column();
         boolean tv = host.isTv();
-        int horizontal = tv ? Math.max(38, (context.getResources().getConfiguration().screenWidthDp - 760) / 2) : 20;
-        article.setPadding(ui.dp(horizontal), ui.dp(10), ui.dp(horizontal), ui.dp(30));
+        LinearLayout bar = tv ? null : ui.toolbar(context.getString(R.string.post_title), true, host::back);
+        if (!tv) screen.addView(bar);
+        else scroll.setVerticalScrollBarEnabled(false);
+        LinearLayout article = ui.column();
+        boolean hasComments = post.allowed() && !post.commentsDenied() && !post.slug().isEmpty();
+        LinearLayout comments = ui.column();
+        int horizontal = tv && !hasComments
+            ? Math.max(48, (context.getResources().getConfiguration().screenWidthDp - 760) / 2) : tv ? 0 : 20;
+        article.setPadding(ui.dp(horizontal), ui.dp(tv ? (hasComments ? 0 : 27) : 10),
+            ui.dp(horizontal), ui.dp(30));
         scroll.addView(article);
-        screen.addView(scroll, new LinearLayout.LayoutParams(Ui.MATCH, 0, 1));
-
-        String subtitle = post.author();
-        if (post.published() > 0) {
-            Locale locale = context.getResources().getConfiguration().getLocales().get(0);
-            String date = DateFormat.getDateInstance(DateFormat.MEDIUM, locale)
-                .format(new Date(post.published() * 1000L));
-            subtitle = subtitle.isEmpty() ? date : subtitle + "  ·  " + date;
+        if (tv && hasComments) {
+            LinearLayout panels = ui.row();
+            panels.setPadding(ui.dp(48), ui.dp(27), ui.dp(48), ui.dp(27));
+            panels.addView(scroll, new LinearLayout.LayoutParams(0, Ui.MATCH, 3));
+            addCommentsPanel(panels, comments);
+            screen.addView(panels, new LinearLayout.LayoutParams(Ui.MATCH, 0, 1));
+        } else {
+            screen.addView(scroll, new LinearLayout.LayoutParams(Ui.MATCH, 0, 1));
         }
-        article.addView(ui.label(subtitle, 15, Ui.ACCENT, true));
-        ui.margin(article, ui.label(post.displayTitle(context), tv ? 33 : 28, Ui.INK, true),
-            Ui.MATCH, Ui.WRAP, 8);
+
+        TextView heading = ui.label(post.displayTitle(context), 28, Ui.INK, true);
+        if (tv) {
+            LinearLayout title = ui.row();
+            title.setGravity(Gravity.CENTER_VERTICAL);
+            title.addView(ui.iconButton(R.drawable.ic_back, context.getString(R.string.nav_back), host::back),
+                new LinearLayout.LayoutParams(ui.dp(44), ui.dp(44)));
+            ui.weighted(title, heading, 12, Ui.WRAP);
+            article.addView(title);
+        } else article.addView(heading);
+        String metadata = post.displayMetadata(context);
+        String subtitle = post.author().isEmpty() ? metadata
+            : metadata.isEmpty() ? post.author() : post.author() + "  ·  " + metadata;
+        if (!subtitle.isEmpty()) ui.margin(article, ui.label(subtitle, 15, Ui.MUTED, false), Ui.MATCH, Ui.WRAP, 4);
         if (!post.allowed()) {
             ui.margin(article, ui.label(context.getString(R.string.post_access_required), 16, Ui.ACCENT, false),
                 Ui.MATCH, Ui.WRAP, 16);
         }
-        for (Post.Block block : post.blocks()) {
-            switch (block.kind()) {
-                case "text" -> {
-                    TextView body = ui.label(block.text(), tv ? 18 : 16, Ui.INK, false);
-                    body.setLineSpacing(ui.dp(4), 1f);
-                    ui.margin(article, body, Ui.MATCH, Ui.WRAP, 14);
-                }
-                case "image" -> {
-                    ImageView photo = ui.image(block.image(), ImageView.ScaleType.FIT_CENTER);
-                    photo.setBackground(ui.shape(ui.surface, Ui.RADIUS_MEDIA, 0));
-                    photo.setClipToOutline(true);
-                    ui.margin(article, photo, Ui.MATCH, ui.dp(tv ? 290 : 230), 14);
-                }
-                case "video" -> {
-                    if (!block.image().isEmpty()) {
-                        FrameLayout preview = ui.videoPreview(tv);
-                        preview.addView(ui.image(block.image(), ImageView.ScaleType.FIT_CENTER),
-                            new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
-                        preview.setBackground(ui.shape(ui.surface, Ui.RADIUS_MEDIA, 0));
-                        preview.setClipToOutline(true);
-                        ui.margin(article, preview, Ui.MATCH, Ui.WRAP, 14);
-                    }
-                    if (block.sources().isEmpty()) {
-                        ui.margin(article, ui.label(context.getString(R.string.post_video_unavailable),
-                            15, Ui.MUTED, false), Ui.MATCH, Ui.WRAP, 8);
-                    } else {
-                        String startLabel = context.getString(R.string.post_play_from_start);
-                        TextView play = ui.button(startLabel, true, () -> host.openPlayer(block, false));
-                        TextView restart = ui.button(startLabel, false, () -> host.openPlayer(block, true));
-                        restart.setVisibility(View.GONE);
-                        Ui.onAttach(play, () -> {
-                            long position = host.history().get(block).resume();
-                            play.setText(position > 0
-                                ? context.getString(R.string.post_continue_watching,
-                                    TimeFormat.format(context, position)) : startLabel);
-                            restart.setVisibility(position > 0 ? View.VISIBLE : View.GONE);
-                        });
-                        ui.margin(article, play, Ui.MATCH, ui.dp(49), 8);
-                        ui.margin(article, restart, Ui.MATCH, ui.dp(44), 6);
-                        if (firstVideo == null) firstVideo = play;
-                    }
+        int featured = -1;
+        if (tv) {
+            for (int i = 0; i < post.blocks().size(); i++) {
+                if (!post.blocks().get(i).sources().isEmpty()) {
+                    featured = i;
+                    addVideo(article, post.blocks().get(i));
+                    break;
                 }
             }
+        }
+        addTags(article);
+        for (int i = 0; i < post.blocks().size(); i++) {
+            if (i != featured) addBlock(article, post.blocks().get(i));
         }
         if (post.allowed() && !post.reactionsDisabled() && !post.slug().isEmpty()) {
             addReactions(article, post, "", post.reactions());
         }
-        boolean hasComments = post.allowed() && !post.commentsDenied() && !post.slug().isEmpty();
-        LinearLayout comments = ui.column();
-        if (hasComments) {
+        if (hasComments && !tv) {
             TextView title = ui.label(context.getString(R.string.post_comments), 22, Ui.INK, true);
-            title.setFocusable(tv);
             comments.addView(title);
             ui.margin(article, comments, Ui.MATCH, Ui.WRAP, 22);
-            bar.addView(ui.button(context.getString(R.string.post_comments), false, () -> {
-                if (tv) title.requestFocus();
-                scroll.smoothScrollTo(0, comments.getTop());
-            }));
+            bar.addView(ui.button(context.getString(R.string.post_comments), false,
+                () -> scroll.smoothScrollTo(0, comments.getTop())));
         }
         if (hasComments) loadComments(comments, post, 0, "");
+    }
+
+    private void addCommentsPanel(LinearLayout panels, LinearLayout comments) {
+        LinearLayout panel = ui.column();
+        panel.setBackground(ui.shape(ui.surface, Ui.RADIUS_MEDIA, 0));
+        panel.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(8));
+        panel.addView(ui.label(context.getString(R.string.post_comments), 21, Ui.INK, true));
+        ScrollView commentScroll = new ScrollView(context);
+        commentScroll.addView(comments);
+        panel.addView(commentScroll, new LinearLayout.LayoutParams(Ui.MATCH, 0, 1));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, Ui.MATCH, 2);
+        params.leftMargin = ui.dp(24);
+        panels.addView(panel, params);
+    }
+
+    private void addTags(LinearLayout article) {
+        if (post.tags().isEmpty() || post.slug().isEmpty()) return;
+        HorizontalScrollView strip = new HorizontalScrollView(context);
+        strip.setHorizontalScrollBarEnabled(false);
+        strip.setFocusable(false);
+        LinearLayout chips = ui.row();
+        strip.addView(chips);
+        for (BoostyApi.Tag tag : post.tags()) {
+            TextView chip = ui.button("#" + tag.name(), false, () -> host.showTag(post, tag));
+            chip.setMaxWidth(ui.dp(280));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(Ui.WRAP, ui.dp(44));
+            params.rightMargin = ui.dp(8);
+            chips.addView(chip, params);
+        }
+        ui.margin(article, strip, Ui.MATCH, Ui.WRAP, 10);
+    }
+
+    private void addBlock(LinearLayout article, Post.Block block) {
+        switch (block.kind()) {
+            case "text" -> {
+                TextView body = ui.label(block.text(), host.isTv() ? 18 : 16, Ui.INK, false);
+                body.setLineSpacing(ui.dp(4), 1f);
+                ui.margin(article, body, Ui.MATCH, Ui.WRAP, 14);
+            }
+            case "image" -> {
+                ImageView photo = ui.image(block.image(), ImageView.ScaleType.FIT_CENTER);
+                photo.setBackground(ui.shape(ui.surface, Ui.RADIUS_MEDIA, 0));
+                photo.setClipToOutline(true);
+                ui.margin(article, photo, Ui.MATCH, ui.dp(host.isTv() ? 290 : 230), 14);
+            }
+            case "video" -> addVideo(article, block);
+        }
+    }
+
+    private void addVideo(LinearLayout article, Post.Block block) {
+        if (!block.image().isEmpty()) {
+            FrameLayout preview = ui.videoPreview(host.isTv() ? 270 : 320);
+            preview.addView(firstVideo == null && !block.sources().isEmpty() ? ui.featuredImage(block.image())
+                    : ui.image(block.image(), ImageView.ScaleType.FIT_CENTER),
+                new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+            preview.setBackground(ui.shape(ui.surface, Ui.RADIUS_MEDIA, 0));
+            preview.setClipToOutline(true);
+            ui.margin(article, preview, Ui.MATCH, Ui.WRAP, 12);
+        }
+        if (block.sources().isEmpty()) {
+            ui.margin(article, ui.label(context.getString(R.string.post_video_unavailable),
+                15, Ui.MUTED, false), Ui.MATCH, Ui.WRAP, 8);
+            return;
+        }
+        String startLabel = context.getString(R.string.post_play_from_start);
+        String playLabel = host.isTv() ? context.getString(R.string.post_play) : startLabel;
+        TextView play = ui.button(playLabel, true,
+            () -> host.openPlayer(post, block, false));
+        TextView restart = ui.button(startLabel, false, () -> host.openPlayer(post, block, true));
+        restart.setVisibility(View.GONE);
+        Ui.onAttach(play, () -> {
+            long position = host.history().get(block).resume();
+            play.setText(position > 0 ? context.getString(R.string.post_continue_watching,
+                TimeFormat.format(context, position)) : playLabel);
+            restart.setVisibility(position > 0 ? View.VISIBLE : View.GONE);
+        });
+        if (host.isTv()) {
+            LinearLayout actions = ui.row();
+            actions.addView(play, new LinearLayout.LayoutParams(0, ui.dp(48), 1));
+            ui.weighted(actions, restart, 8, ui.dp(48));
+            ui.margin(article, actions, Ui.MATCH, Ui.WRAP, 8);
+        } else {
+            ui.margin(article, play, Ui.MATCH, ui.dp(49), 8);
+            ui.margin(article, restart, Ui.MATCH, ui.dp(44), 6);
+        }
+        if (firstVideo == null) firstVideo = play;
     }
 
     private void loadComments(LinearLayout list, Post post, long parent, String offset) {
@@ -192,7 +261,7 @@ final class PostScreen {
     private void renderComment(LinearLayout list, Post post, BoostyApi.Comment comment, boolean showReplies) {
         LinearLayout item = ui.column();
         item.setFocusable(host.isTv());
-        item.setBackground(ui.control(ui.surface, ui.focusedSurface, 12));
+        item.setBackground(ui.control(host.isTv() ? ui.background : ui.surface, ui.focusedSurface, 12));
         item.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12));
         String author = comment.author().isEmpty()
             ? context.getString(R.string.post_author_unknown) : comment.author();

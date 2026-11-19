@@ -2,7 +2,6 @@ package ru.boostyatv.client;
 
 import android.view.Gravity;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -34,7 +33,8 @@ final class AuthorsScreen {
         this.host = host;
         this.ui = host.ui();
         screen = ui.column();
-        screen.addView(ui.toolbar(ui.context().getString(R.string.feed_subscriptions), true, host::back));
+        screen.addView(ui.toolbar(ui.context().getString(host.isTv() ? R.string.nav_channels
+            : R.string.feed_subscriptions), !host.isTv(), host::back));
         ScrollView scroll = new ScrollView(ui.context());
         scroll.setPadding(ui.dp(host.isTv() ? 38 : 16), ui.dp(8), ui.dp(host.isTv() ? 38 : 16), ui.dp(24));
         authors = ui.column();
@@ -67,10 +67,9 @@ final class AuthorsScreen {
                 item.setGravity(Gravity.CENTER_VERTICAL);
                 item.setPadding(ui.dp(12), 0, ui.dp(12), 0);
                 item.setBackground(ui.control(ui.surface, ui.focusedSurface, 12));
-                ImageView avatar = ui.image(author.image(), ImageView.ScaleType.CENTER_CROP);
-                avatar.setBackground(ui.shape(0xff332b38, Ui.RADIUS_PILL, 0));
-                avatar.setClipToOutline(true);
-                item.addView(avatar, new LinearLayout.LayoutParams(ui.dp(44), ui.dp(44)));
+                Ui.Avatar avatar = ui.new Avatar(44);
+                avatar.bind(author.image());
+                item.addView(avatar);
                 TextView name = ui.label(author.name(), 17, Ui.INK, true);
                 name.setPadding(ui.dp(14), 0, ui.dp(14), 0);
                 item.addView(name, new LinearLayout.LayoutParams(0, Ui.WRAP, 1));
@@ -92,7 +91,7 @@ final class AuthorsScreen {
                 ui.margin(authors, ui.label(ui.context().getString(R.string.feed_no_subscriptions),
                     17, Ui.MUTED, false), Ui.MATCH, Ui.WRAP, 10);
             }
-            if (host.isTv() && (offset == 0 || focused) && first != null) first.requestFocus();
+            if (host.isTv() && focused && first != null) first.requestFocus();
         }, () -> more.setText(ui.context().getString(R.string.retry)));
     }
 }

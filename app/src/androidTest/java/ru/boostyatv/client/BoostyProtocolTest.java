@@ -18,6 +18,7 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.URL;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -156,13 +157,16 @@ public final class BoostyProtocolTest {
     @Test public void parsesRichTextAndUsesOnlyPermittedVideoSources() throws Exception {
         JSONObject text = new JSONObject().put("type", "text")
             .put("content", new JSONArray().put("Текст публикации").put("format").put(new JSONArray()).toString());
-        JSONObject video = new JSONObject().put("type", "ok_video").put("playerUrls", new JSONArray()
+        JSONObject video = new JSONObject().put("type", "ok_video")
+            .put("showViewsCounter", true).put("viewsCounter", 0).put("playerUrls", new JSONArray()
             .put(new JSONObject().put("type", "full_hd").put("url", "https://media.example.com/video.mp4"))
             .put(new JSONObject().put("type", "hls").put("url", "http://media.example.com/video.m3u8"))
             .put(new JSONObject().put("type", "hls").put("url", "https://media.example.com/video.m3u8")));
         JSONArray data = new JSONArray().put(text).put(video);
         JSONArray rows = new JSONArray()
-            .put(new JSONObject().put("id", "open").put("hasAccess", true).put("data", data))
+            .put(new JSONObject().put("id", "open").put("hasAccess", true).put("data", data)
+                .put("showViewsCounter", false)
+                .put("tags", new JSONArray().put(new JSONObject().put("id", 17620).put("title", "обновления"))))
             .put(new JSONObject().put("id", "locked").put("hasAccess", false).put("data", data).put("teaser", data));
 
         var posts = Post.parseList(rows);
@@ -171,7 +175,10 @@ public final class BoostyProtocolTest {
         var sources = posts.get(0).blocks().get(1).sources();
         assertEquals(2, sources.size());
         assertEquals("hls", sources.get(0).type());
+        assertEquals(0, posts.get(0).views());
+        assertEquals(List.of(new BoostyApi.Tag("17620", "обновления")), posts.get(0).tags());
         assertFalse(posts.get(1).hasVideo());
+        assertEquals(-1, posts.get(1).views());
     }
 
     @Test public void channelSearchCommentsAndProgressUseBoostyContracts() throws Exception {
@@ -198,6 +205,12 @@ public final class BoostyProtocolTest {
                 }
                 if (path.startsWith("/v1/blog/author/post/tag/")) {
                     return new JSONObject("{\"data\":[{\"id\":1,\"title\":\"First tag\"}]}");
+                }
+                if (path.equals("/v1/blog/author/post/?limit=18&comments_limit=0&is_only_allowed=true&tags_ids=1")) {
+                    return new JSONObject("{\"data\":[{\"id\":\"test-post\"}],\"extra\":{\"isLast\":true}}");
+                }
+                if (path.equals("/v1/blog/author/post/test-post?comments_limit=0")) {
+                    return new JSONObject("{\"id\":\"test-post\",\"user\":{\"blogUrl\":\"author\"}}");
                 }
                 if (path.startsWith("/v1/blog/author/post/test-post/comment/")) {
                     if (path.endsWith("/reaction?from_page=post")) {
@@ -231,6 +244,8 @@ public final class BoostyProtocolTest {
             assertEquals(341_000L, video.positionMs());
             assertEquals(600_000L, video.durationMs());
             assertEquals("1", api.tags("author").get(0).id());
+            assertEquals("test-post", api.posts("author", "", "", "1").posts().get(0).id());
+            assertEquals("author", api.post("author", "test-post").slug());
             assertEquals("https://img.example.com/channel.png", post.authorAvatar());
             var reply = api.comments(post, 123, "cursor+1").items().get(0);
             assertEquals("https://img.example.com/reader.png", reply.authorAvatar());
@@ -241,7 +256,7 @@ public final class BoostyProtocolTest {
             api.setReaction(post, "", "fire");
             api.setReaction(post, reply.reactionId(), "");
             api.updateTimecode(video.videoId(), 342);
-            assertEquals(7, calls.get());
+            assertEquals(9, calls.get());
         } finally {
             store.clear();
         }

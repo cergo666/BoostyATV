@@ -232,6 +232,13 @@
     <string name="login_country_prefix">%1$s  %2$s  ▾</string>
     <string name="update_download_progress">%1$d%%</string>
     <string name="nav_home">Home</string>
+    <string name="nav_history">History</string>
+    <string name="nav_channels">Channels</string>
+    <string name="feed_subscription_feed">Subscription feed</string>
+    <string name="post_play">Play</string>
+    <string name="history_empty">Videos you play will appear here.</string>
+    <string name="post_view_count">Views: %1$s</string>
+    <item type="id" name="tv_nav_selected" />
     <string name="nav_account">Account</string>
     <string name="settings_section_playback">Playback</string>
     <string name="settings_section_appearance">Appearance</string>

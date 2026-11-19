@@ -15,6 +15,7 @@ import java.net.URLEncoder;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -172,7 +173,11 @@ final class BoostyApi {
     }
 
     synchronized List<Tag> tags(String author) throws Exception {
-        JSONArray rows = authenticated("/v1/blog/" + Uri.encode(author) + "/post/tag/").getJSONArray("data");
+        return parseTags(authenticated("/v1/blog/" + Uri.encode(author) + "/post/tag/").getJSONArray("data"));
+    }
+
+    static List<Tag> parseTags(JSONArray rows) {
+        if (rows == null) return Collections.emptyList();
         List<Tag> tags = new ArrayList<>();
         for (int i = 0; i < rows.length(); i++) {
             JSONObject row = rows.optJSONObject(i);
@@ -180,7 +185,14 @@ final class BoostyApi {
             String title = Post.string(row, "title");
             if (!id.isEmpty() && !title.isEmpty()) tags.add(new Tag(id, title));
         }
-        return tags;
+        return Collections.unmodifiableList(tags);
+    }
+
+    synchronized Post post(String slug, String id) throws Exception {
+        String path = "/v1/blog/" + Uri.encode(slug) + "/post/" + Uri.encode(id);
+        JSONObject item = authenticated(path + "?comments_limit=0");
+        if (!id.equals(Post.string(item, "id"))) throw new IOException("Unexpected post response");
+        return Post.parse(item, Collections.emptyMap());
     }
 
     synchronized Comments comments(Post post, long parent, String offset) throws Exception {

@@ -232,6 +232,12 @@
     <string name="login_country_prefix">%1$s  %2$s  ▾</string>
     <string name="update_download_progress">%1$d%%</string>
     <string name="nav_home">Главная</string>
+    <string name="nav_history">История</string>
+    <string name="nav_channels">Каналы</string>
+    <string name="feed_subscription_feed">Лента подписок</string>
+    <string name="post_play">Воспроизвести</string>
+    <string name="history_empty">Здесь появятся видео, которые вы запускали.</string>
+    <string name="post_view_count">Просмотров: %1$s</string>
     <string name="nav_account">Аккаунт</string>
     <string name="settings_section_playback">Воспроизведение</string>
     <string name="settings_section_appearance">Оформление</string>

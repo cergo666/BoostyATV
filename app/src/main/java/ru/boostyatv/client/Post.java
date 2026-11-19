@@ -7,14 +7,24 @@ import org.json.JSONObject;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.text.DateFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 record Post(String id, String title, String author, String slug, String authorAvatar, long published, boolean allowed,
-            String cover, List<Block> blocks, boolean commentsDenied, boolean reactionsDisabled, Reactions reactions) {
+            String cover, List<Block> blocks, boolean commentsDenied, boolean reactionsDisabled, Reactions reactions,
+            List<BoostyApi.Tag> tags, long views) {
+    Post(String id, String title, String author, String slug, String authorAvatar, long published, boolean allowed,
+         String cover, List<Block> blocks, boolean commentsDenied, boolean reactionsDisabled, Reactions reactions) {
+        this(id, title, author, slug, authorAvatar, published, allowed, cover, blocks, commentsDenied,
+            reactionsDisabled, reactions, Collections.emptyList(), -1);
+    }
     static final String UNTITLED = "";
     record Block(String kind, String text, String image, List<Source> sources,
                  String videoId, long positionMs, long durationMs) {
@@ -32,6 +42,18 @@ record Post(String id, String title, String author, String slug, String authorAv
         return title.isEmpty() ? context.getString(R.string.post_untitled) : title;
     }
 
+    String displayMetadata(Context context) {
+        Locale locale = context.getResources().getConfiguration().getLocales().get(0);
+        List<String> parts = new ArrayList<>(2);
+        if (published > 0) {
+            parts.add(DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(new Date(published * 1000L)));
+        }
+        if (views >= 0) {
+            parts.add(context.getString(R.string.post_view_count, NumberFormat.getIntegerInstance(locale).format(views)));
+        }
+        return String.join("  ·  ", parts);
+    }
+
     static List<Post> parseList(JSONArray items) {
         return parseList(items, Map.of());
     }
@@ -45,9 +67,10 @@ record Post(String id, String title, String author, String slug, String authorAv
         return posts;
     }
 
-    private static Post parse(JSONObject item, Map<String, String> avatars) {
+    static Post parse(JSONObject item, Map<String, String> avatars) {
         boolean allowed = item.optBoolean("hasAccess", true);
-        List<Block> blocks = blocks(item.optJSONArray(allowed ? "data" : "teaser"), allowed);
+        JSONArray media = item.optJSONArray(allowed ? "data" : "teaser");
+        List<Block> blocks = blocks(media, allowed);
         List<Block> teaser = blocks(item.optJSONArray("teaser"), false);
         String cover = "";
         for (Block block : blocks) {
@@ -77,7 +100,27 @@ record Post(String id, String title, String author, String slug, String authorAv
         if (avatar.isEmpty()) avatar = avatars.getOrDefault(slug, "");
         return new Post(string(item, "id"), title, string(author, "name"), slug, avatar,
             item.optLong("publishTime", item.optLong("createdAt")), allowed, cover, blocks,
-            item.optBoolean("isCommentsDenied"), item.optBoolean("reactionsDisabled"), Reactions.parse(item));
+            item.optBoolean("isCommentsDenied"), item.optBoolean("reactionsDisabled"), Reactions.parse(item),
+            BoostyApi.parseTags(item.optJSONArray("tags")), viewCount(item, media, allowed));
+    }
+
+    private static long viewCount(JSONObject item, JSONArray media, boolean allowed) {
+        if (allowed && media != null) {
+            for (int i = 0; i < media.length(); i++) {
+                JSONObject block = media.optJSONObject(i);
+                String type = string(block, "type");
+                if (!type.equals("ok_video") && !type.equals("video")) continue;
+                if (block.optBoolean("showViewsCounter")) {
+                    long views = block.optLong("viewsCounter", -1);
+                    if (views >= 0) return views;
+                }
+                break;
+            }
+        }
+        if (!item.optBoolean("showViewsCounter", true)) return -1;
+        JSONObject count = item.optJSONObject("count");
+        long views = count == null ? -1 : count.optLong("views", -1);
+        return views >= 0 ? views : item.optLong("viewsCounter", -1);
     }
 
     static String avatar(JSONObject owner) {

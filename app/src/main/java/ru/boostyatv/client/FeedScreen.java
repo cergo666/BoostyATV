@@ -77,6 +77,7 @@ final class FeedScreen {
     private boolean videosOnly;
     private String search = "";
     private List<BoostyApi.Tag> channelTags;
+    private BoostyApi.Tag linkedTag;
     private TextView filterSummary;
     private int pendingScroll = -1;
 
@@ -95,6 +96,7 @@ final class FeedScreen {
 
         list = new RecyclerView(context);
         list.setClipToPadding(false);
+        list.setClipChildren(!tv);
         list.setPadding(ui.dp(tv ? 38 : 16), ui.dp(8), ui.dp(tv ? 38 : 16), ui.dp(24));
         layout = new GridLayoutManager(context, columns);
         layout.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
@@ -130,6 +132,12 @@ final class FeedScreen {
     int scrollPosition() { return layout.findFirstVisibleItemPosition(); }
     void scrollTo(int position) { pendingScroll = position; }
     boolean unfiltered() { return search.isEmpty() && selectedTags.isEmpty() && !videosOnly; }
+
+    void openTag(BoostyApi.Tag tag) {
+        linkedTag = tag;
+        selectedTags.add(tag.id());
+        reload();
+    }
 
     private void buildHeader() {
         if (author == null) {
@@ -172,7 +180,8 @@ final class FeedScreen {
     }
 
     private int columnsFor(int widthDp) {
-        return tv ? (widthDp >= 920 ? 4 : 3) : (widthDp >= 760 ? 3 : widthDp >= 560 ? 2 : 1);
+        return tv ? (widthDp >= 1060 ? 4 : widthDp >= 700 ? 3 : 2)
+            : (widthDp >= 760 ? 3 : widthDp >= 560 ? 2 : 1);
     }
 
     private void updateColumns() {
@@ -252,6 +261,8 @@ final class FeedScreen {
                     active.add(context.getString(R.string.feed_filter_tag, tag.name()));
                 }
             }
+        } else if (linkedTag != null && selectedTags.contains(linkedTag.id())) {
+            active.add(context.getString(R.string.feed_filter_tag, linkedTag.name()));
         }
         if (filterSummary != null) {
             filterSummary.setText(String.join("  ·  ", active));
@@ -313,7 +324,7 @@ final class FeedScreen {
             if (added > 0) rows.notifyItemRangeInserted(previous + 1, added);
             rows.notifyItemChanged(Math.max(0, rows.getItemCount() - 1));
             if (pendingScroll >= 0 && (pendingScroll <= visible.size() || next.isEmpty())) {
-                layout.scrollToPosition(Math.min(pendingScroll, visible.size()));
+                layout.scrollToPositionWithOffset(Math.min(pendingScroll, visible.size()), 0);
                 pendingScroll = -1;
             }
             list.post(this::maybeLoadMore);
@@ -351,7 +362,9 @@ final class FeedScreen {
                     if (failed) load(next);
                 });
             }
-            item.setLayoutParams(new RecyclerView.LayoutParams(Ui.MATCH, Ui.WRAP));
+            RecyclerView.LayoutParams params = new RecyclerView.LayoutParams(Ui.MATCH, Ui.WRAP);
+            if (tv && type == POST) params.setMargins(ui.dp(6), ui.dp(6), ui.dp(6), ui.dp(6));
+            item.setLayoutParams(params);
             return new RecyclerView.ViewHolder(item) {};
         }
 
@@ -385,6 +398,7 @@ final class FeedScreen {
         private final TextView author;
         private final Ui.Avatar avatar;
         private final TextView title;
+        private final TextView metadata;
         private final Runnable refreshProgress = this::updateProgress;
         private Post post;
 
@@ -393,15 +407,16 @@ final class FeedScreen {
             this.host = host;
             this.ui = ui;
             setOrientation(VERTICAL);
-            setPadding(ui.dp(4), ui.dp(4), ui.dp(4), ui.dp(4));
-            setBackground(ui.control(ui.surface, ui.focusedSurface, Ui.RADIUS_CARD));
+            if (!host.isTv()) setPadding(ui.dp(4), ui.dp(4), ui.dp(4), ui.dp(4));
+            setBackground(ui.control(ui.surface, ui.focusedSurface, host.isTv() ? 14 : Ui.RADIUS_CARD));
             setClipToOutline(true);
             if (host.isTv()) {
                 StateListDrawable outline = new StateListDrawable();
                 outline.addState(new int[]{android.R.attr.state_focused},
-                    ui.shape(Color.TRANSPARENT, Ui.RADIUS_MEDIA, Ui.INK));
-                outline.addState(new int[]{}, ui.shape(Color.TRANSPARENT, Ui.RADIUS_MEDIA, 0));
+                    ui.shape(Color.TRANSPARENT, 14, Ui.INK));
+                outline.addState(new int[]{}, ui.shape(Color.TRANSPARENT, 14, 0));
                 setForeground(outline);
+                ui.animateTvFocus(this, 1.05f);
             }
 
             FrameLayout cover = ui.videoPreview(host.isTv());
@@ -409,17 +424,16 @@ final class FeedScreen {
             cover.setClipToOutline(true);
             image = new ImageView(getContext());
             image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            image.setVisibility(GONE);
-            cover.addView(image, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
-            placeholder = ui.label("", 35, Ui.ACCENT, true);
+            placeholder = ui.label("", host.isTv() ? 20 : 30, Ui.MUTED, true);
             placeholder.setGravity(Gravity.CENTER);
             cover.addView(placeholder, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+            cover.addView(image, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
             playBadge = new FrameLayout(getContext());
             playBadge.setBackground(ui.shape(0xd91a141b, Ui.RADIUS_PILL, 0));
             ImageView playIcon = ui.icon(R.drawable.ic_play, 16, Ui.INK);
             playBadge.addView(playIcon, new FrameLayout.LayoutParams(ui.dp(16), ui.dp(16), Gravity.CENTER));
-            playBadge.setContentDescription(getContext().getString(R.string.placeholder_video));
-            FrameLayout.LayoutParams corner = new FrameLayout.LayoutParams(ui.dp(40), ui.dp(40),
+            int badgeSize = ui.dp(host.isTv() ? 28 : 40);
+            FrameLayout.LayoutParams corner = new FrameLayout.LayoutParams(badgeSize, badgeSize,
                 Gravity.BOTTOM | Gravity.END);
             corner.setMargins(0, 0, ui.dp(10), ui.dp(10));
             cover.addView(playBadge, corner);
@@ -432,41 +446,48 @@ final class FeedScreen {
             addView(cover, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
 
             LinearLayout meta = ui.column();
-            meta.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(14));
+            meta.setPadding(ui.dp(12), ui.dp(8), ui.dp(12), ui.dp(10));
             title = ui.label("", host.isTv() ? 17 : 16, Ui.INK, true);
-            title.setMaxLines(2);
+            if (host.isTv()) title.setLines(2);
+            else title.setMaxLines(2);
             title.setLineSpacing(ui.dp(2), 1f);
             title.setEllipsize(TextUtils.TruncateAt.END);
             meta.addView(title);
             LinearLayout authorRow = ui.row();
             authorRow.setGravity(Gravity.CENTER_VERTICAL);
-            avatar = ui.new Avatar(host.isTv() ? 30 : 24);
-            authorRow.addView(avatar);
-            author = ui.label("", 12, Ui.MUTED, false);
+            avatar = host.isTv() ? null : ui.new Avatar(24);
+            if (avatar != null) authorRow.addView(avatar);
+            author = ui.label("", host.isTv() ? 14 : 12, Ui.MUTED, false);
             author.setSingleLine(true);
             author.setEllipsize(TextUtils.TruncateAt.END);
-            author.setPadding(ui.dp(7), 0, 0, 0);
+            if (avatar != null) author.setPadding(ui.dp(7), 0, 0, 0);
             authorRow.addView(author, new LinearLayout.LayoutParams(0, Ui.WRAP, 1));
-            ui.margin(meta, authorRow, Ui.MATCH, Ui.WRAP, 6);
+            ui.margin(meta, authorRow, Ui.MATCH, Ui.WRAP, host.isTv() ? 2 : 6);
+            metadata = ui.label("", 13, Ui.MUTED, false);
+            metadata.setMaxLines(2);
+            metadata.setEllipsize(TextUtils.TruncateAt.END);
+            meta.addView(metadata);
             addView(meta);
             ui.makeAction(this, () -> host.showPost(post));
         }
 
         void bind(Post post) {
             this.post = post;
-            boolean hasCover = !post.cover().isEmpty();
-            image.setVisibility(hasCover ? VISIBLE : GONE);
             placeholder.setText(post.hasVideo() ? getContext().getString(R.string.placeholder_video)
                 : getContext().getString(R.string.placeholder_image));
-            placeholder.setVisibility(hasCover ? GONE : VISIBLE);
-            if (hasCover) ui.bindImage(image, post.cover(), ImageView.ScaleType.FIT_CENTER);
+            ui.bindThumbnail(image, post.cover(), host.isTv()
+                ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
             playBadge.setVisibility(post.hasVideo() ? VISIBLE : GONE);
             progress.setVisibility(post.hasVideo() ? VISIBLE : GONE);
             title.setText(post.displayTitle(getContext()));
-            avatar.bind(post.authorAvatar());
+            if (avatar != null) avatar.bind(post.authorAvatar());
             author.setText(post.author().isEmpty()
                 ? getContext().getString(R.string.post_app_name) : post.author());
+            String details = post.displayMetadata(getContext());
+            metadata.setText(details);
+            metadata.setVisibility(details.isEmpty() ? GONE : VISIBLE);
             setContentDescription(post.displayTitle(getContext()) + ", " + author.getText()
+                + (details.isEmpty() ? "" : ", " + details)
                 + (post.hasVideo() ? getContext().getString(R.string.post_video_suffix) : ""));
             updateProgress();
         }

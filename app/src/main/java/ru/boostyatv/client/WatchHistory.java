@@ -3,6 +3,8 @@ package ru.boostyatv.client;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import org.json.JSONArray;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,10 +12,13 @@ final class WatchHistory {
     private static final String PENDING = ".pending";
     private static final String EXTERNAL = ".external";
     private static final String ORDER = "order";
+    private static final String RECENT_POSTS = "recent_posts";
+    private static final int MAX_RECENT_POSTS = 50;
     private static final int MAX_ENTRIES = 500;
     private static final Object LOCK = new Object();
     record Pending(String id, long position) {}
     record Order(List<String> ids, List<String> evicted) {}
+    record RecentPost(String slug, String id, String title, String author) {}
 
     static Order nextOrder(String raw, String id, int limit) {
         List<String> ids = new ArrayList<>();
@@ -44,6 +49,36 @@ final class WatchHistory {
         if (video.videoId().isEmpty()) return new Progress(video.positionMs(), video.durationMs());
         return new Progress(preferences.getLong(video.videoId() + ".position", video.positionMs()),
             preferences.getLong(video.videoId() + ".duration", video.durationMs()));
+    }
+
+    List<RecentPost> recentPosts() {
+        List<RecentPost> result = new ArrayList<>();
+        try {
+            JSONArray items = new JSONArray(preferences.getString(RECENT_POSTS, "[]"));
+            for (int i = 0; i < items.length(); i++) {
+                JSONArray item = items.optJSONArray(i);
+                if (item == null || item.optString(0).isEmpty() || item.optString(1).isEmpty()) continue;
+                result.add(new RecentPost(item.optString(0), item.optString(1),
+                    item.optString(2), item.optString(3)));
+            }
+        } catch (org.json.JSONException ignored) {
+            // A damaged history index does not affect saved playback positions.
+        }
+        return result;
+    }
+
+    void remember(Post post) {
+        if (post.slug().isEmpty() || post.id().isEmpty()) return;
+        synchronized (LOCK) {
+            List<RecentPost> posts = recentPosts();
+            posts.removeIf(item -> item.slug().equals(post.slug()) && item.id().equals(post.id()));
+            posts.add(0, new RecentPost(post.slug(), post.id(), post.title(), post.author()));
+            JSONArray rows = new JSONArray();
+            for (RecentPost item : posts.subList(0, Math.min(posts.size(), MAX_RECENT_POSTS))) {
+                rows.put(new JSONArray().put(item.slug()).put(item.id()).put(item.title()).put(item.author()));
+            }
+            preferences.edit().putString(RECENT_POSTS, rows.toString()).apply();
+        }
     }
 
     void save(Post.Block video, long position, long duration) {

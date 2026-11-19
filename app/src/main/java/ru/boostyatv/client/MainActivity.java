@@ -16,6 +16,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -43,7 +44,10 @@ public final class MainActivity extends ComponentActivity
     @Override public boolean busy() { return busy; }
     @Override public void back() { goBack(); }
     @Override public void refreshLabels() { refreshRegistered(host); }
-    @Override public void openPlayer(Post.Block block, boolean fromStart) { playerScreen.open(block, fromStart); }
+    @Override public void openPlayer(Post post, Post.Block block, boolean fromStart) {
+        watchHistory.remember(post);
+        playerScreen.open(block, fromStart);
+    }
     @Override public boolean updating() { return updates.isUpdating(); }
     @Override public UpdateController updates() { return updates; }
     @Override public void refreshFeed() { if (currentFeed != null) currentFeed.reload(); }
@@ -137,19 +141,20 @@ public final class MainActivity extends ComponentActivity
     }
 
     @Override public void showFeed(String authorSlug, String authorName, boolean push) {
+        showFeed(authorSlug, authorName, push, null);
+    }
+
+    @Override public void showTag(Post post, BoostyApi.Tag tag) {
+        showFeed(post.slug(), post.author().isEmpty() ? post.slug() : post.author(), true, tag);
+    }
+
+    private void showFeed(String authorSlug, String authorName, boolean push, BoostyApi.Tag tag) {
         boolean home = authorSlug == null;
         LinearLayout screen = ui.column();
-        LinearLayout toolbar = ui.toolbar(home ? getString(R.string.app_name) : authorName, !home,
-            () -> { if (!busy) goBack(); },
-            heading -> { if (home && tv) heading.setPadding(ui.dp(12), 0, 0, 0); });
+        LinearLayout toolbar = ui.toolbar(home ? getString(tv ? R.string.feed_subscription_feed : R.string.app_name)
+            : authorName, !home,
+            () -> { if (!busy) goBack(); });
         if (home) {
-            if (tv) {
-                TextView subscriptions = ui.button(getString(R.string.feed_subscriptions), false,
-                    this::showAuthors);
-                subscriptions.setContentDescription(getString(R.string.feed_subscriptions));
-                toolbar.addView(subscriptions, 0,
-                    new LinearLayout.LayoutParams(WRAP, ui.dp(46)));
-            }
             ImageView refresh = ui.iconButton(R.drawable.ic_refresh,
                 getString(R.string.account_refresh_feed), () -> {
                     if (currentFeed != null) currentFeed.reload();
@@ -161,12 +166,12 @@ public final class MainActivity extends ComponentActivity
                 LinearLayout.LayoutParams qrParams = new LinearLayout.LayoutParams(ui.dp(44), ui.dp(44));
                 qrParams.leftMargin = ui.dp(8);
                 toolbar.addView(qr, qrParams);
+                ImageView menu = ui.iconButton(R.drawable.ic_more,
+                    getString(R.string.feed_menu), this::showAccountMenu);
+                LinearLayout.LayoutParams menuParams = new LinearLayout.LayoutParams(ui.dp(44), ui.dp(44));
+                menuParams.leftMargin = ui.dp(8);
+                toolbar.addView(menu, menuParams);
             }
-            ImageView menu = ui.iconButton(R.drawable.ic_more,
-                getString(R.string.feed_menu), this::showAccountMenu);
-            LinearLayout.LayoutParams menuParams = new LinearLayout.LayoutParams(ui.dp(44), ui.dp(44));
-            menuParams.leftMargin = ui.dp(8);
-            toolbar.addView(menu, menuParams);
         }
         screen.addView(toolbar);
         FeedScreen feed = new FeedScreen(this, authorSlug, authorName);
@@ -180,15 +185,19 @@ public final class MainActivity extends ComponentActivity
             screen.addView(ui.bottomNav(0, tab(0, () -> showFeed(null, null, true)),
                 tab(1, this::showAuthors), tab(2, this::showSettings), tab(3, this::showAccount)));
         }
-        screen.setTag(R.id.feed_screen, feed);
-        replace(screen, push);
-        feed.load("");
+        View content = tv ? tvSection(screen, home ? 0 : 1) : screen;
+        if (tv && !home) content.setTag(R.id.nav_tab, null);
+        content.setTag(R.id.feed_screen, feed);
+        replace(content, push);
+        if (tag == null) feed.load("");
+        else feed.openTag(tag);
         if (home) syncWatchProgress();
     }
 
     private FeedScreen currentFeed;
     private FeedScreen lastFeed;
-    private final View[] tabs = new View[4];
+    private static final int HISTORY_TAB = 4;
+    private final View[] tabs = new View[5];
     private boolean selectingTab;
     private int pendingFeedScroll = -1;
     private int activeTab = -1;
@@ -201,7 +210,7 @@ public final class MainActivity extends ComponentActivity
             view.addView(ui.bottomNav(1, tab(0, () -> showFeed(null, null, true)),
                 tab(1, this::showAuthors), tab(2, this::showSettings), tab(3, this::showAccount)));
         }
-        replace(view, true);
+        replace(tv ? tvSection(view, 1) : view, true);
     }
 
     private void showAccount() {
@@ -215,14 +224,15 @@ public final class MainActivity extends ComponentActivity
                 tab(1, this::showAuthors), tab(2, this::showSettings), tab(3, this::showAccount)));
             content = wrap;
         }
-        replace(content, true);
-        if (tv) account.focus();
+        replace(tv ? tvSection(content, 3) : content, true);
+        if (tv && !selectingTab) account.focus();
     }
 
     @Override public void showPost(Post post) {
         PostScreen screen = new PostScreen(this, post);
         replace(screen.view(), true);
         screen.focus();
+        if (tv) ui.reveal(screen.view());
     }
 
     @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
@@ -329,23 +339,47 @@ public final class MainActivity extends ComponentActivity
                 tab(1, this::showAuthors), tab(2, this::showSettings), tab(3, this::showAccount)));
             content = wrap;
         }
-        replace(content, true);
-        if (tv) settings.focus();
+        replace(tv ? tvSection(content, 2) : content, true);
+        if (tv && !selectingTab) settings.focus();
     }
 
-    /** Bottom-nav selection: repeated taps on the active tab do nothing. */
+    private void showHistory() {
+        replace(tvSection(HistoryScreen.build(this), HISTORY_TAB), true);
+    }
+
+    private View tvSection(View content, int index) {
+        LinearLayout section = ui.row();
+        section.setTag(R.id.nav_tab, index);
+        ScrollView menu = new ScrollView(this);
+        menu.setFillViewport(true);
+        menu.setVerticalScrollBarEnabled(false);
+        menu.setBackgroundColor(ui.surface);
+        LinearLayout rail = ui.column();
+        rail.setPadding(ui.dp(32), ui.dp(27), ui.dp(10), ui.dp(27));
+        menu.addView(rail, new ScrollView.LayoutParams(MATCH, WRAP));
+        section.addView(menu, new LinearLayout.LayoutParams(ui.dp(180), MATCH));
+        ui.weighted(section, content, 0, MATCH);
+        View[] entries = {
+            ui.tvNavItem(R.drawable.ic_subscriptions, R.string.feed_subscriptions, index == 0, tab(0, () -> showFeed(null, null, true))),
+            ui.tvNavItem(R.drawable.ic_tv, R.string.nav_channels, index == 1, tab(1, this::showAuthors)),
+            ui.tvNavItem(R.drawable.ic_history, R.string.nav_history, index == HISTORY_TAB, tab(HISTORY_TAB, this::showHistory)),
+            ui.tvNavItem(R.drawable.ic_settings, R.string.account_settings, index == 2, tab(2, this::showSettings)),
+            ui.tvNavItem(R.drawable.ic_person, R.string.nav_account, index == 3, tab(3, this::showAccount))
+        };
+        for (View entry : entries) ui.margin(rail, entry, MATCH, ui.dp(48), 5);
+        return section;
+    }
+
+    /** Top-level navigation preserves the home and subscriptions screens when switching tabs. */
     private Runnable tab(int index, Runnable action) {
         return () -> {
             if (activeTab == index) return;
             navigator.clear();
             if (index != 0 && tabs[0] != null) navigator.push(tabs[0]);
-            if (tabs[index] != null) {
-                replace(tabs[index], false);
-                return;
-            }
             selectingTab = true;
             try {
-                action.run();
+                if (tabs[index] != null && index != HISTORY_TAB) replace(tabs[index], false);
+                else action.run();
             } finally {
                 selectingTab = false;
             }
@@ -441,7 +475,11 @@ public final class MainActivity extends ComponentActivity
         host.addView(view, new FrameLayout.LayoutParams(MATCH, MATCH));
         Object tab = view.getTag(R.id.nav_tab);
         activeTab = tab instanceof Integer value ? value : -1;
-        if (activeTab >= 0) tabs[activeTab] = view;
+        if (activeTab >= 0 && activeTab != HISTORY_TAB) tabs[activeTab] = view;
+        if (tv && selectingTab && activeTab >= 0 && view instanceof LinearLayout frame) {
+            frame.findViewById(R.id.tv_nav_selected).requestFocus();
+            ui.reveal(frame.getChildAt(1));
+        }
         currentFeed = view.getTag(R.id.feed_screen) instanceof FeedScreen feed ? feed : null;
         if (currentFeed != null) lastFeed = currentFeed;
         back.setEnabled(!navigator.isEmpty() || (loginScreen != null && loginScreen.hasState()));

@@ -141,6 +141,8 @@ final class Ui {
         text.setSingleLine(true);
         text.setEllipsize(TextUtils.TruncateAt.END);
         StateListDrawable bg = new StateListDrawable();
+        if (tv) bg.addState(new int[]{android.R.attr.state_selected, android.R.attr.state_focused},
+            shape(ACCENT, RADIUS_PILL, INK));
         bg.addState(new int[]{android.R.attr.state_selected}, shape(ACCENT, RADIUS_PILL, 0));
         bg.addState(new int[]{android.R.attr.state_focused}, shape(focusedSurface, RADIUS_PILL, ACCENT));
         bg.addState(new int[]{android.R.attr.state_pressed}, shape(focusedSurface, RADIUS_PILL, 0));
@@ -181,7 +183,8 @@ final class Ui {
         }
 
         void bind(String url) {
-            bindImage(photo, url, ImageView.ScaleType.CENTER_CROP);
+            artwork.bind(photo, url, Artwork.AVATAR, false);
+            photo.setScaleType(ImageView.ScaleType.CENTER_CROP);
         }
     }
 
@@ -224,6 +227,38 @@ final class Ui {
         chip.addView(label);
         makeAction(chip, action);
         return chip;
+    }
+
+    View tvNavItem(int resource, int title, boolean selected, Runnable action) {
+        LinearLayout item = row();
+        item.setGravity(Gravity.CENTER_VERTICAL);
+        item.setPadding(dp(9), 0, dp(6), 0);
+        item.addView(icon(resource, 20, selected ? ACCENT : ICON));
+        TextView text = label(context.getString(title), 15, selected ? ACCENT : INK, true);
+        text.setSingleLine();
+        text.setEllipsize(TextUtils.TruncateAt.END);
+        weighted(item, text, 9, WRAP);
+        item.setContentDescription(text.getText());
+        item.setSelected(selected);
+        if (selected) item.setId(R.id.tv_nav_selected);
+        item.setBackground(control(selected ? focusedSurface : Color.TRANSPARENT, focusedSurface, 12));
+        makeAction(item, action);
+        animateTvFocus(item, 1.025f);
+        return item;
+    }
+
+    void animateTvFocus(View view, float scale) {
+        view.setOnFocusChangeListener((item, focused) -> {
+            float target = focused ? scale : 1f;
+            item.animate().scaleX(target).scaleY(target)
+                .translationZ(focused ? dp(4) : 0).setDuration(140).start();
+        });
+    }
+
+    void reveal(View view) {
+        view.setAlpha(0.82f);
+        view.setTranslationX(dp(8));
+        view.animate().alpha(1f).translationX(0f).setDuration(180).start();
     }
 
     TextView settingsSection(String title) {
@@ -366,14 +401,30 @@ final class Ui {
 
     void bindImage(ImageView view, String url, ImageView.ScaleType scale) {
         view.setScaleType(scale);
-        artwork.bind(view, url);
+        artwork.bind(view, url, Artwork.PREVIEW, false);
+    }
+
+    void bindThumbnail(ImageView view, String url, ImageView.ScaleType scale) {
+        view.setScaleType(scale);
+        artwork.bind(view, url, Artwork.THUMBNAIL, false);
+    }
+
+    ImageView featuredImage(String url) {
+        ImageView view = new ImageView(context);
+        view.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        artwork.bind(view, url, Artwork.PREVIEW, true);
+        return view;
     }
 
     FrameLayout videoPreview(boolean tv) {
+        return videoPreview(tv ? 420 : 320);
+    }
+
+    FrameLayout videoPreview(int maxHeight) {
         return new FrameLayout(context) {
             @Override protected void onMeasure(int widthSpec, int heightSpec) {
                 int width = View.MeasureSpec.getSize(widthSpec);
-                int height = Math.min(Math.round(width * 9f / 16), dp(tv ? 420 : 320));
+                int height = Math.min(Math.round(width * 9f / 16), dp(maxHeight));
                 super.onMeasure(widthSpec, View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
             }
         };
