@@ -38,6 +38,30 @@ record Post(String id, String title, String author, String slug, String authorAv
         return blocks.stream().anyMatch(block -> !block.sources().isEmpty());
     }
 
+    long primaryDurationMs() {
+        for (Block block : blocks) {
+            if (!block.sources().isEmpty() && block.durationMs() > 0) return block.durationMs();
+        }
+        return 0L;
+    }
+
+    String primaryVideoId() {
+        for (Block block : blocks) {
+            if (!block.sources().isEmpty() && !block.videoId().isEmpty()) return block.videoId();
+        }
+        return "";
+    }
+
+    int watchProgressPercent(WatchHistory history) {
+        int best = 0;
+        for (Block block : blocks) {
+            if (block.sources().isEmpty()) continue;
+            int pct = history.get(block).percentage();
+            if (pct > best) best = pct;
+        }
+        return best;
+    }
+
     String displayTitle(Context context) {
         return title.isEmpty() ? context.getString(R.string.post_untitled) : title;
     }

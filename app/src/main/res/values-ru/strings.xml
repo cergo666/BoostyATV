@@ -254,4 +254,14 @@
     <string name="account_profile_signed_in">Вы вошли в аккаунт Boosty</string>
     <string name="account_logout_hint">Завершить сеанс на этом устройстве</string>
     <string name="account_section_session">Сеанс</string>
+    <string name="feed_continue_watching">Продолжить просмотр</string>
+    <string name="login_tv_qr_headline">Быстрый вход с телефона</string>
+    <string name="login_tv_qr_refresh">Обновить QR-код</string>
+    <string name="login_tv_use_phone_number">Войти по номеру телефона</string>
+    <string name="login_tv_use_qr">Войти по QR-коду</string>
+    <string name="player_play_pause">Воспроизвести или пауза</string>
+    <string name="player_seek_back_10">Назад на 10 секунд</string>
+    <string name="player_seek_forward_10">Вперёд на 10 секунд</string>
+    <string name="player_subtitles_off">Выключены</string>
+    <string name="player_track_auto">Авто</string>
 </resources>

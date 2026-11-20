@@ -18,7 +18,12 @@ final class WatchHistory {
     private static final Object LOCK = new Object();
     record Pending(String id, long position) {}
     record Order(List<String> ids, List<String> evicted) {}
-    record RecentPost(String slug, String id, String title, String author) {}
+    record RecentPost(String slug, String id, String title, String author,
+                      String cover, String videoId, long durationMs) {
+        RecentPost(String slug, String id, String title, String author) {
+            this(slug, id, title, author, "", "", 0L);
+        }
+    }
 
     static Order nextOrder(String raw, String id, int limit) {
         List<String> ids = new ArrayList<>();
@@ -51,6 +56,12 @@ final class WatchHistory {
             preferences.getLong(video.videoId() + ".duration", video.durationMs()));
     }
 
+    Progress progressForVideo(String videoId, long fallbackDuration) {
+        if (videoId == null || videoId.isEmpty()) return new Progress(0L, fallbackDuration);
+        return new Progress(preferences.getLong(videoId + ".position", 0L),
+            preferences.getLong(videoId + ".duration", fallbackDuration));
+    }
+
     List<RecentPost> recentPosts() {
         List<RecentPost> result = new ArrayList<>();
         try {
@@ -59,7 +70,8 @@ final class WatchHistory {
                 JSONArray item = items.optJSONArray(i);
                 if (item == null || item.optString(0).isEmpty() || item.optString(1).isEmpty()) continue;
                 result.add(new RecentPost(item.optString(0), item.optString(1),
-                    item.optString(2), item.optString(3)));
+                    item.optString(2), item.optString(3),
+                    item.optString(4, ""), item.optString(5, ""), item.optLong(6, 0L)));
             }
         } catch (org.json.JSONException ignored) {
             // A damaged history index does not affect saved playback positions.
@@ -72,10 +84,12 @@ final class WatchHistory {
         synchronized (LOCK) {
             List<RecentPost> posts = recentPosts();
             posts.removeIf(item -> item.slug().equals(post.slug()) && item.id().equals(post.id()));
-            posts.add(0, new RecentPost(post.slug(), post.id(), post.title(), post.author()));
+            posts.add(0, new RecentPost(post.slug(), post.id(), post.title(), post.author(),
+                post.cover(), post.primaryVideoId(), post.primaryDurationMs()));
             JSONArray rows = new JSONArray();
             for (RecentPost item : posts.subList(0, Math.min(posts.size(), MAX_RECENT_POSTS))) {
-                rows.put(new JSONArray().put(item.slug()).put(item.id()).put(item.title()).put(item.author()));
+                rows.put(new JSONArray().put(item.slug()).put(item.id()).put(item.title()).put(item.author())
+                    .put(item.cover()).put(item.videoId()).put(item.durationMs()));
             }
             preferences.edit().putString(RECENT_POSTS, rows.toString()).apply();
         }

@@ -255,4 +255,14 @@
     <string name="account_profile_signed_in">Signed in to Boosty</string>
     <string name="account_logout_hint">End the session on this device</string>
     <string name="account_section_session">Session</string>
+    <string name="feed_continue_watching">Continue watching</string>
+    <string name="login_tv_qr_headline">Sign in with your phone</string>
+    <string name="login_tv_qr_refresh">Generate new QR code</string>
+    <string name="login_tv_use_phone_number">Sign in by phone number</string>
+    <string name="login_tv_use_qr">Sign in with QR code</string>
+    <string name="player_play_pause">Play or pause</string>
+    <string name="player_seek_back_10">Rewind 10 seconds</string>
+    <string name="player_seek_forward_10">Forward 10 seconds</string>
+    <string name="player_subtitles_off">Off</string>
+    <string name="player_track_auto">Auto</string>
 </resources>
