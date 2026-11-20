@@ -2,7 +2,6 @@ package ru.boostyatv.client
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -35,6 +34,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 
 @Composable
 internal fun AboutScreenView(
@@ -170,7 +170,7 @@ internal fun AboutScreenView(
                     primary = false,
                     onClick = {
                         try {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(AppRelease.PROJECT)))
+                            context.startActivity(Intent(Intent.ACTION_VIEW, AppRelease.PROJECT.toUri()))
                         } catch (_: ActivityNotFoundException) {
                             Toast.makeText(context, AppRelease.PROJECT, Toast.LENGTH_LONG).show()
                         }

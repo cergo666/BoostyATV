@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -941,7 +942,7 @@ private fun CommentCard(
                 shape = ControlShape,
             )
             .onFocusChanged { focused = it.isFocused }
-            .then(if (isTv) Modifier.clickable(role = Role.Button) {} else Modifier)
+            .then(if (isTv) Modifier.focusable() else Modifier)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

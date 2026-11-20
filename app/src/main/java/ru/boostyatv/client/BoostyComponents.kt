@@ -585,10 +585,10 @@ internal fun BoostySettingsSection(
 internal fun BoostySettingsRow(
     @DrawableRes iconRes: Int,
     title: String,
-    subtitle: String? = null,
-    value: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    value: String? = null,
     danger: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
@@ -803,9 +803,9 @@ internal fun BoostyOverlaySheet(
 @Composable
 internal fun BoostySheetOption(
     label: String,
-    selected: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    selected: Boolean = false,
     subtitle: String? = null,
     @DrawableRes iconRes: Int? = null,
     trailingText: String? = null,

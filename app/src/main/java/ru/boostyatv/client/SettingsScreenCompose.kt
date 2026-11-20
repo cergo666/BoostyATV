@@ -47,6 +47,11 @@ internal fun SettingsScreenView(
 
     val qualityLabels = remember(context) { PlaybackOptions.qualityLabels(context).toList() }
     val allPlayers = remember { PlaybackOptions.App.values().toList() }
+    val firstRowFocus = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (isTv) runCatching { firstRowFocus.requestFocus() }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         ScreenToolbar(
@@ -77,6 +82,7 @@ internal fun SettingsScreenView(
                     subtitle = stringResource(R.string.settings_quality_hint),
                     value = qualityLabels.getOrElse(qualityIndex) { qualityLabels.first() },
                     onClick = { showQualitySheet = true },
+                    modifier = Modifier.focusRequester(firstRowFocus),
                 )
 
                 BoostySettingsRow(

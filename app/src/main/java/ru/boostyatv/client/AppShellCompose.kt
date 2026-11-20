@@ -13,6 +13,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,8 +37,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -82,6 +85,7 @@ private val PhoneNavEntries = listOf(
 internal val TvRailCollapsedWidth = 76.dp
 private val TvRailExpandedWidth = 228.dp
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun AppNavigationShell(
     selectedTab: AppTab?,
@@ -112,7 +116,9 @@ internal fun AppNavigationShell(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(start = TvRailCollapsedWidth),
+                        .padding(start = TvRailCollapsedWidth)
+                        .focusRestorer()
+                        .focusGroup(),
                 ) {
                     content()
                 }
@@ -147,6 +153,8 @@ internal fun AppNavigationShell(
                         .width(railWidth)
                         .zIndex(10f)
                         .background(palette.railBackground)
+                        .focusRestorer()
+                        .focusGroup()
                         .onFocusChanged { railFocused = it.hasFocus }
                         .padding(vertical = 24.dp, horizontal = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),

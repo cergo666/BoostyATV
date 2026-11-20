@@ -10,6 +10,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.WindowManager
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -71,6 +72,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.edit
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import org.json.JSONObject
@@ -151,6 +153,15 @@ internal fun LoginScreenView(
     }
 
     val confirming = challenge != null
+    BackHandler(enabled = confirming) {
+        challenge = null
+        codeInput = ""
+        errorText = null
+    }
+    BackHandler(enabled = isTv && tvPhoneMode && !confirming && pairSender == null) {
+        tvPhoneMode = false
+        errorText = null
+    }
     val displayedCountry = remember(phoneInput, selectedCountry, countries) {
         PhoneCountry.fromInternational(phoneInput, selectedCountry, countries)
     }
@@ -484,8 +495,9 @@ internal fun LoginScreenView(
             current = displayedCountry,
             onSelect = { country ->
                 selectedCountry = country
-                context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE).edit()
-                    .putString("phone_region", country.region()).apply()
+                context.getSharedPreferences("login_prefs", Context.MODE_PRIVATE).edit {
+                    putString("phone_region", country.region())
+                }
                 if (country.prefix() != displayedCountry.prefix()) {
                     val national = displayedCountry.nationalPart(phoneInput)
                     if (national != phoneInput) phoneInput = national
@@ -884,6 +896,10 @@ internal fun WebLoginScreenView(
             webViewRef?.close(true)
             webViewRef = null
         }
+    }
+
+    BackHandler {
+        if (webViewRef?.closePopup() != true) onBack()
     }
 
     Column(

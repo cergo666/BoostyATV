@@ -30,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,9 +47,11 @@ internal fun AccountScreenView(
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
     var showLogoutConfirm by remember { mutableStateOf(false) }
+    val logoutFocus = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
         onRequestProfile()
+        if (isTv) runCatching { logoutFocus.requestFocus() }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -142,6 +146,7 @@ internal fun AccountScreenView(
                     subtitle = stringResource(R.string.account_logout_hint),
                     danger = true,
                     onClick = { showLogoutConfirm = true },
+                    modifier = Modifier.focusRequester(logoutFocus),
                 )
 
                 Spacer(Modifier.height(24.dp))

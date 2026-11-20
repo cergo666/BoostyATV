@@ -16,6 +16,7 @@ import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
@@ -64,6 +65,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -848,11 +850,19 @@ internal fun PlayerScreenView(
         }
     }
 
-    LaunchedEffect(controlsVisible, menuPage) {
-        if (isTv && menuPage == null) {
-            if (controlsVisible) runCatching { playButtonFocus.requestFocus() }
-            else runCatching { rootFocus.requestFocus() }
+    LaunchedEffect(controlsVisible, menuPage, showSeekTimeDialog, controller.isBuffering) {
+        if (isTv && menuPage == null && !showSeekTimeDialog) {
+            if (controlsVisible && !controller.isBuffering) {
+                withFrameNanos { }
+                runCatching { playButtonFocus.requestFocus() }
+            } else if (!controlsVisible) {
+                runCatching { rootFocus.requestFocus() }
+            }
         }
+    }
+
+    BackHandler(enabled = isTv && controlsVisible && menuPage == null && !showSeekTimeDialog && !controller.playbackError) {
+        controlsVisible = false
     }
 
     Box(
@@ -892,20 +902,20 @@ internal fun PlayerScreenView(
                         }
                         KeyEvent.KEYCODE_MEDIA_REWIND -> {
                             controller.seekBy(-10_000L)
-                            showFeedback("-10s")
+                            showFeedback(resources.getString(R.string.player_seek_back_short))
                             bumpControls()
                             return@onPreviewKeyEvent true
                         }
                         KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
                             controller.seekBy(10_000L)
-                            showFeedback("+10s")
+                            showFeedback(resources.getString(R.string.player_seek_forward_short))
                             bumpControls()
                             return@onPreviewKeyEvent true
                         }
                         KeyEvent.KEYCODE_DPAD_LEFT -> {
                             if (!controlsVisible) {
                                 controller.seekBy(-10_000L)
-                                showFeedback("-10s")
+                                showFeedback(resources.getString(R.string.player_seek_back_short))
                                 bumpControls()
                                 return@onPreviewKeyEvent true
                             }
@@ -914,7 +924,7 @@ internal fun PlayerScreenView(
                         KeyEvent.KEYCODE_DPAD_RIGHT -> {
                             if (!controlsVisible) {
                                 controller.seekBy(10_000L)
-                                showFeedback("+10s")
+                                showFeedback(resources.getString(R.string.player_seek_forward_short))
                                 bumpControls()
                                 return@onPreviewKeyEvent true
                             }
@@ -1121,7 +1131,7 @@ internal fun PlayerScreenView(
                             primary = false,
                             onClick = {
                                 controller.seekBy(-10_000L)
-                                showFeedback("-10s")
+                                showFeedback(resources.getString(R.string.player_seek_back_short))
                                 bumpControls()
                             },
                         )
@@ -1145,7 +1155,7 @@ internal fun PlayerScreenView(
                             primary = false,
                             onClick = {
                                 controller.seekBy(10_000L)
-                                showFeedback("+10s")
+                                showFeedback(resources.getString(R.string.player_seek_forward_short))
                                 bumpControls()
                             },
                         )

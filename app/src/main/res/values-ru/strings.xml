@@ -28,7 +28,6 @@
     <string name="login_action_change_number">Изменить номер</string>
     <string name="login_action_resend">Выслать снова</string>
     <string name="login_action_cancel_pair">Отменить подключение</string>
-    <string name="login_action_tv_phone">Войти с телефона</string>
     <string name="login_action_social">Через соцсеть</string>
     <string name="login_error_select_country">Выберите страну и введите номер или вставьте полный номер с +.</string>
     <string name="login_error_code_format">Введите 6 цифр из сообщения.</string>
@@ -53,7 +52,6 @@
     <string name="login_pair_network">Телевизор не отвечает. Проверьте общую сеть и откройте новый QR-код.</string>
     <string name="login_pair_tv_not_connected">Подключите телевизор к домашней сети.</string>
     <string name="login_pair_cannot_open">Не удалось открыть подключение к телевизору.</string>
-    <string name="login_pair_cannot_create_qr">Не удалось создать QR-код.</string>
     <string name="login_pair_already_connected">Телевизор уже подключён.</string>
     <string name="login_pair_invalid_phone_format">Введите номер в международном формате.</string>
     <string name="login_pair_request_code_first">Сначала запросите код.</string>
@@ -144,7 +142,6 @@
     <string name="player_stats_video">Видео</string>
     <string name="player_stats_audio">Аудио</string>
     <string name="player_stats_buffer">Буфер</string>
-    <string name="player_progress_watched">Просмотрено %d%%</string>
     <string name="player_external_not_found">Сторонний плеер не найден. Открываю встроенный.</string>
     <string name="player_external_chooser">Открыть видео в плеере</string>
 
@@ -197,17 +194,12 @@
     <string name="time_ms">%1$d:%2$02d</string>
 
     <!-- Placeholders -->
-    <string name="placeholder_video">▶</string>
-    <string name="placeholder_image">▤</string>
     <string name="login_hint_no_code">Без кода</string>
     <string name="login_pair_instruction">Откройте Boosty ATV на телефоне, нажмите «QR» и отсканируйте код. Устройства должны быть в одной сети.</string>
     <string name="login_pair_qr_description">QR-код подключения</string>
-    <string name="login_pair_phone_title">Вход с телефона</string>
     <string name="feed_filter_search">Название: %1$s</string>
     <string name="feed_filter_tag">#%1$s</string>
     <string name="post_video_suffix">, видео</string>
-    <string name="player_menu_quality">Качество видео  ·  %1$s</string>
-    <string name="player_menu_speed">Скорость  ·  %1$s×</string>
     <string name="player_seek_go">Перейти</string>
     <string name="player_stats_channels">%1$d кан.</string>
     <string name="player_stats_khz">%.1f кГц</string>
@@ -250,7 +242,6 @@
     <string name="settings_connect_tv_hint">Вход по QR-коду</string>
     <string name="settings_about_hint">Версия, автор и ссылка на проект</string>
     <string name="settings_check_updates_hint">Проверить новую версию</string>
-    <string name="account_profile_loading">Загрузка профиля…</string>
     <string name="account_profile_signed_in">Вы вошли в аккаунт Boosty</string>
     <string name="account_logout_hint">Завершить сеанс на этом устройстве</string>
     <string name="account_section_session">Сеанс</string>
@@ -262,6 +253,8 @@
     <string name="player_play_pause">Воспроизвести или пауза</string>
     <string name="player_seek_back_10">Назад на 10 секунд</string>
     <string name="player_seek_forward_10">Вперёд на 10 секунд</string>
+    <string name="player_seek_back_short">−10 с</string>
+    <string name="player_seek_forward_short">+10 с</string>
     <string name="player_subtitles_off">Выключены</string>
     <string name="player_track_auto">Авто</string>
 </resources>

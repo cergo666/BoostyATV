@@ -28,7 +28,6 @@
     <string name="login_action_change_number">Change number</string>
     <string name="login_action_resend">Resend</string>
     <string name="login_action_cancel_pair">Cancel pairing</string>
-    <string name="login_action_tv_phone">Log in with phone</string>
     <string name="login_action_social">Via social network</string>
     <string name="login_error_select_country">Select a country and enter a number or paste a full number with +.</string>
     <string name="login_error_code_format">Enter 6 digits from the message.</string>
@@ -53,7 +52,6 @@
     <string name="login_pair_network">TV not responding. Check shared network and open a new QR code.</string>
     <string name="login_pair_tv_not_connected">Connect TV to home network.</string>
     <string name="login_pair_cannot_open">Failed to open TV connection.</string>
-    <string name="login_pair_cannot_create_qr">Failed to create QR code.</string>
     <string name="login_pair_already_connected">TV already connected.</string>
     <string name="login_pair_invalid_phone_format">Enter number in international format.</string>
     <string name="login_pair_request_code_first">Request code first.</string>
@@ -144,7 +142,6 @@
     <string name="player_stats_video">Video</string>
     <string name="player_stats_audio">Audio</string>
     <string name="player_stats_buffer">Buffer</string>
-    <string name="player_progress_watched">Watched %d%%</string>
     <string name="player_external_not_found">External player not found. Opening built-in.</string>
     <string name="player_external_chooser">Open video in player</string>
 
@@ -197,17 +194,12 @@
     <string name="time_ms">%1$d:%2$02d</string>
 
     <!-- Placeholders -->
-    <string name="placeholder_video">▶</string>
-    <string name="placeholder_image">▤</string>
     <string name="login_hint_no_code">Without country code</string>
     <string name="login_pair_instruction">Open Boosty ATV on your phone, tap QR and scan the code. Both devices must be on the same network.</string>
     <string name="login_pair_qr_description">Pairing QR code</string>
-    <string name="login_pair_phone_title">Phone login</string>
     <string name="feed_filter_search">Title: %1$s</string>
     <string name="feed_filter_tag">#%1$s</string>
     <string name="post_video_suffix">, video</string>
-    <string name="player_menu_quality">Video quality  ·  %1$s</string>
-    <string name="player_menu_speed">Speed  ·  %1$s×</string>
     <string name="player_seek_go">Go</string>
     <string name="player_stats_channels">%1$d ch.</string>
     <string name="player_stats_khz">%.1f kHz</string>
@@ -250,7 +242,6 @@
     <string name="settings_connect_tv_hint">Sign in with a QR code</string>
     <string name="settings_about_hint">Version, author and project link</string>
     <string name="settings_check_updates_hint">Check for a new version</string>
-    <string name="account_profile_loading">Loading profile…</string>
     <string name="account_profile_signed_in">Signed in to Boosty</string>
     <string name="account_logout_hint">End the session on this device</string>
     <string name="account_section_session">Session</string>
@@ -262,6 +253,8 @@
     <string name="player_play_pause">Play or pause</string>
     <string name="player_seek_back_10">Rewind 10 seconds</string>
     <string name="player_seek_forward_10">Forward 10 seconds</string>
+    <string name="player_seek_back_short">−10s</string>
+    <string name="player_seek_forward_short">+10s</string>
     <string name="player_subtitles_off">Off</string>
     <string name="player_track_auto">Auto</string>
 </resources>
