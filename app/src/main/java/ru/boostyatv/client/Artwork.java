@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 
 /**
  * Image loader with a two-level cache: decoded bitmaps in memory and the
@@ -106,6 +107,34 @@ final class Artwork {
                     image.animate().alpha(1f).setDuration(140).start();
                 }
             });
+        });
+        future.whenComplete((bitmap, error) -> inFlight.remove(request, future));
+    }
+
+    Bitmap cached(String url, int size) {
+        if (url == null || url.isEmpty()) return null;
+        Bitmap exact = cache.get(new Request(url, size));
+        if (exact != null) return exact;
+        if (size == PREVIEW) return cache.get(new Request(url, THUMBNAIL));
+        return null;
+    }
+
+    void loadBitmap(String url, int size, boolean priority, Consumer<Bitmap> onResult) {
+        if (url == null || url.isEmpty()) return;
+        Request request = new Request(url, size);
+        Bitmap existing = cache.get(request);
+        if (existing != null) {
+            onResult.accept(existing);
+            return;
+        }
+        Long failedAt = failures.get(url);
+        if (failedAt != null && System.currentTimeMillis() - failedAt < FAILURE_TTL_MS) return;
+        if (workers.isShutdown()) return;
+        CompletableFuture<Bitmap> future = inFlight.computeIfAbsent(request,
+            key -> CompletableFuture.supplyAsync(() -> loadAndCache(key), priority ? featured : workers));
+        future.thenAccept(bitmap -> {
+            if (bitmap == null) return;
+            main.post(() -> onResult.accept(bitmap));
         });
         future.whenComplete((bitmap, error) -> inFlight.remove(request, future));
     }
