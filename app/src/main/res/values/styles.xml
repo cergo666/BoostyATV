@@ -1,9 +1,4 @@
 <resources>
-    <item type="id" name="refresh_tag" />
-    <item type="id" name="artwork_url" />
-    <item type="id" name="settings_value" />
-    <item type="id" name="nav_tab" />
-    <item type="id" name="feed_screen" />
     <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">@font/golos_text</item>
         <item name="android:windowBackground">#0C0D12</item>
@@ -11,9 +6,5 @@
         <item name="android:statusBarColor">#0C0D12</item>
         <item name="android:navigationBarColor">#0C0D12</item>
         <item name="android:windowLightStatusBar">false</item>
-    </style>
-    <style name="CountryPickerTheme" parent="android:style/Theme.Material.Dialog.Alert">
-        <item name="android:colorBackgroundFloating">#201E27</item>
-        <item name="android:colorAccent">#FFAA81</item>
     </style>
 </resources>

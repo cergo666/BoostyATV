@@ -93,8 +93,6 @@ dependencies {
     implementation libs.androidx.compose.ui.tooling.preview
     debugImplementation libs.androidx.compose.ui.tooling
     implementation libs.androidx.tv.material
-    implementation libs.androidx.recyclerview
-    implementation libs.androidx.swiperefreshlayout
     compileOnly libs.androidx.annotation
     implementation libs.androidx.media3.exoplayer
     implementation libs.androidx.media3.exoplayer.hls

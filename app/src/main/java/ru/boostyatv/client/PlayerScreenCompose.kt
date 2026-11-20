@@ -80,6 +80,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -807,6 +808,7 @@ internal fun PlayerScreenView(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
 
@@ -1233,7 +1235,7 @@ internal fun PlayerScreenView(
                 val parsed = TimeFormat.parse(raw)
                 val max = controller.durationMs
                 if (parsed < 0L || (max > 0L && parsed > max)) {
-                    seekError = context.getString(R.string.player_seek_error)
+                    seekError = resources.getString(R.string.player_seek_error)
                 } else {
                     seekError = null
                     showSeekTimeDialog = false
@@ -1431,24 +1433,25 @@ private fun PlayerSettingsOverlay(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val qualityLabels = remember(context) { PlaybackOptions.qualityLabels(context).toList() }
     val speeds = remember { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }
     val speedLabels = remember(context) {
         listOf(
-            context.getString(R.string.player_speed_05),
-            context.getString(R.string.player_speed_075),
-            context.getString(R.string.player_speed_normal),
-            context.getString(R.string.player_speed_125),
-            context.getString(R.string.player_speed_150),
-            context.getString(R.string.player_speed_175),
-            context.getString(R.string.player_speed_200),
+            resources.getString(R.string.player_speed_05),
+            resources.getString(R.string.player_speed_075),
+            resources.getString(R.string.player_speed_normal),
+            resources.getString(R.string.player_speed_125),
+            resources.getString(R.string.player_speed_150),
+            resources.getString(R.string.player_speed_175),
+            resources.getString(R.string.player_speed_200),
         )
     }
     val frameModes = remember(context) {
         listOf(
-            AspectRatioFrameLayout.RESIZE_MODE_FIT to context.getString(R.string.player_frame_fit),
-            AspectRatioFrameLayout.RESIZE_MODE_ZOOM to context.getString(R.string.player_frame_zoom),
-            AspectRatioFrameLayout.RESIZE_MODE_FILL to context.getString(R.string.player_frame_fill),
+            AspectRatioFrameLayout.RESIZE_MODE_FIT to resources.getString(R.string.player_frame_fit),
+            AspectRatioFrameLayout.RESIZE_MODE_ZOOM to resources.getString(R.string.player_frame_zoom),
+            AspectRatioFrameLayout.RESIZE_MODE_FILL to resources.getString(R.string.player_frame_fill),
         )
     }
 
@@ -1497,7 +1500,7 @@ private fun PlayerSettingsOverlay(
                     iconRes = R.drawable.ic_audiotrack,
                     onClick = {
                         if (controller.tracksFor(C.TRACK_TYPE_AUDIO).size <= 1) {
-                            Toast.makeText(context, context.getString(R.string.player_no_tracks), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, resources.getString(R.string.player_no_tracks), Toast.LENGTH_SHORT).show()
                         } else {
                             onNavigate(PlayerMenuPage.AUDIO)
                         }
@@ -1508,7 +1511,7 @@ private fun PlayerSettingsOverlay(
                     iconRes = R.drawable.ic_subtitles,
                     onClick = {
                         if (controller.tracksFor(C.TRACK_TYPE_TEXT).size <= 1) {
-                            Toast.makeText(context, context.getString(R.string.player_no_tracks), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, resources.getString(R.string.player_no_tracks), Toast.LENGTH_SHORT).show()
                         } else {
                             onNavigate(PlayerMenuPage.SUBTITLES)
                         }

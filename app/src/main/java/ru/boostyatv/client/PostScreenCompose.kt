@@ -49,7 +49,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -107,6 +109,7 @@ internal fun PostScreenView(
     onOpenTag: (Post, BoostyApi.Tag) -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
     val scope = rememberCoroutineScope()
@@ -175,14 +178,14 @@ internal fun PostScreenView(
             onSuccess = { types ->
                 pendingReactions.remove(commentId)
                 if (types.isEmpty()) {
-                    Toast.makeText(context, context.getString(R.string.post_reaction_disabled), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, resources.getString(R.string.post_reaction_disabled), Toast.LENGTH_SHORT).show()
                 } else {
                     reactionPicker = ReactionPickerRequest(commentId, initial, types)
                 }
             },
             onError = {
                 pendingReactions.remove(commentId)
-                Toast.makeText(context, context.getString(R.string.post_reaction_load_failed), Toast.LENGTH_LONG).show()
+                Toast.makeText(context, resources.getString(R.string.post_reaction_load_failed), Toast.LENGTH_LONG).show()
             },
         )
     }
@@ -504,7 +507,7 @@ internal fun PostScreenView(
                                 pendingReactions.remove(request.commentId)
                                 Toast.makeText(
                                     context,
-                                    context.getString(R.string.post_reaction_save_failed),
+                                    resources.getString(R.string.post_reaction_save_failed),
                                     Toast.LENGTH_LONG,
                                 ).show()
                             },
@@ -532,7 +535,7 @@ internal fun PostScreenView(
                                 pendingReactions.remove(request.commentId)
                                 Toast.makeText(
                                     context,
-                                    context.getString(R.string.post_reaction_save_failed),
+                                    resources.getString(R.string.post_reaction_save_failed),
                                     Toast.LENGTH_LONG,
                                 ).show()
                             },
@@ -551,6 +554,7 @@ private fun PostHeaderRow(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
     Column {
@@ -716,6 +720,7 @@ private fun VideoBlockCard(
     onOpenPlayer: (Post, Post.Block, Boolean) -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
     val progress = remember(block.videoId(), progressRevision) { watchHistory.get(block) }
@@ -848,6 +853,7 @@ private fun ReactionsBar(
     onClick: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val palette = BoostyTheme.palette
     val ranked = remember(reactions) { reactions.rankedTypes() }
     val selectedType = remember(reactions) {
@@ -898,6 +904,8 @@ private fun CommentCard(
     onOpenReactionPicker: (String, Reactions) -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
+    val configuration = LocalConfiguration.current
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
     var focused by remember { mutableStateOf(false) }
@@ -912,10 +920,10 @@ private fun CommentCard(
         label = "commentBg",
     )
 
-    val authorHeader = remember(comment.id()) {
-        val name = comment.author().ifEmpty { context.getString(R.string.post_author_unknown) }
+    val authorHeader = remember(comment.id(), configuration) {
+        val name = comment.author().ifEmpty { resources.getString(R.string.post_author_unknown) }
         if (comment.created() > 0L) {
-            val locale = context.resources.configuration.locales[0]
+            val locale = configuration.locales[0]
             "$name  ·  ${DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(Date(comment.created() * 1000L))}"
         } else {
             name

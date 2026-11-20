@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
@@ -36,6 +37,7 @@ internal fun SettingsScreenView(
     onCheckUpdates: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val isTv = BoostyTheme.isTv
 
     var qualityIndex by remember { mutableIntStateOf(options.qualityIndex()) }
@@ -95,7 +97,7 @@ internal fun SettingsScreenView(
                         if (updating) {
                             Toast.makeText(
                                 context,
-                                context.getString(R.string.update_in_progress_wait),
+                                resources.getString(R.string.update_in_progress_wait),
                                 Toast.LENGTH_LONG,
                             ).show()
                         } else {

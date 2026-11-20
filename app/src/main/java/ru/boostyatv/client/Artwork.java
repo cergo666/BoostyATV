@@ -7,13 +7,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.LruCache;
-import android.widget.ImageView;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -65,50 +63,6 @@ final class Artwork {
         if (!disk.isDirectory() && !disk.mkdirs()) {
             Log.d("BoostyATV", "Artwork disk cache is unavailable");
         }
-    }
-
-    void bind(ImageView view, String url, int size, boolean priority) {
-        Request request = new Request(url, size);
-        if (request.equals(view.getTag(R.id.artwork_url)) && view.getDrawable() != null) return;
-        Object previous = view.getTag(R.id.artwork_url);
-        view.setTag(R.id.artwork_url, request);
-        if (!request.equals(previous)) {
-            view.animate().cancel();
-            view.setAlpha(1f);
-            view.setImageDrawable(null);
-        }
-        if (url.isEmpty()) return;
-        Bitmap cached = cache.get(request);
-        if (cached != null) {
-            view.setImageBitmap(cached);
-            return;
-        }
-        if (priority) {
-            Bitmap thumbnail = cache.get(new Request(url, THUMBNAIL));
-            if (thumbnail != null) view.setImageBitmap(thumbnail);
-        }
-        Long failedAt = failures.get(url);
-        if (failedAt != null && System.currentTimeMillis() - failedAt < FAILURE_TTL_MS) {
-            return;
-        }
-        if (workers.isShutdown()) return;
-        WeakReference<ImageView> target = new WeakReference<>(view);
-        CompletableFuture<Bitmap> future = inFlight.computeIfAbsent(request,
-            key -> CompletableFuture.supplyAsync(() -> loadAndCache(key), priority ? featured : workers));
-        future.thenAccept(bitmap -> {
-            if (bitmap == null) return;
-            main.post(() -> {
-                ImageView image = target.get();
-                if (image == null || !request.equals(image.getTag(R.id.artwork_url))) return;
-                boolean fade = image.isShown() && image.isAttachedToWindow() && image.getDrawable() == null;
-                image.setImageBitmap(bitmap);
-                if (fade) {
-                    image.setAlpha(0.65f);
-                    image.animate().alpha(1f).setDuration(140).start();
-                }
-            });
-        });
-        future.whenComplete((bitmap, error) -> inFlight.remove(request, future));
     }
 
     Bitmap cached(String url, int size) {

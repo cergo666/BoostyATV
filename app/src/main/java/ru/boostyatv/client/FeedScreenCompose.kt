@@ -555,7 +555,7 @@ internal fun FeedScreenView(
     if (showTagsSheet) {
         val tags = state.channelTags.orEmpty()
         var draft by remember(showTagsSheet, state.selectedTags) {
-            mutableStateOf(LinkedHashSet(state.selectedTags))
+            mutableStateOf<Set<String>>(state.selectedTags.toSet())
         }
         BoostyOverlaySheet(
             title = stringResource(R.string.feed_tags_dialog_title),
@@ -706,6 +706,7 @@ internal fun PostFeedCard(
     val authorText = post.author().ifEmpty { stringResource(R.string.post_app_name) }
     val details = post.displayMetadata(context)
     val durationLabel = remember(post.id()) { formatDurationShort(post.primaryDurationMs()) }
+    val videoSuffix = stringResource(R.string.post_video_suffix)
     val description = buildString {
         append(titleText)
         append(", ")
@@ -714,7 +715,7 @@ internal fun PostFeedCard(
             append(", ")
             append(details)
         }
-        if (post.hasVideo()) append(context.getString(R.string.post_video_suffix))
+        if (post.hasVideo()) append(videoSuffix)
     }
 
     if (isTv) {

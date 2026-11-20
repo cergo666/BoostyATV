@@ -58,6 +58,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -119,6 +120,7 @@ internal fun LoginScreenView(
     onOpenWebLogin: (TvPairing.Sender?) -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
     val keyboard = LocalSoftwareKeyboardController.current
@@ -159,7 +161,7 @@ internal fun LoginScreenView(
         if (activeChallenge != null) {
             val code = codeInput.trim()
             if (!code.matches(Regex("[0-9]{6}"))) {
-                errorText = context.getString(R.string.login_error_code_format)
+                errorText = resources.getString(R.string.login_error_code_format)
                 return
             }
             keyboard?.hide()
@@ -173,7 +175,7 @@ internal fun LoginScreenView(
                     phoneInput = ""
                     codeInput = ""
                     if (pairSender != null) {
-                        Toast.makeText(context, context.getString(R.string.login_pair_connected), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, resources.getString(R.string.login_pair_connected), Toast.LENGTH_SHORT).show()
                         onPairFinished()
                     } else {
                         onSignedIn()
@@ -184,7 +186,7 @@ internal fun LoginScreenView(
         } else {
             val normalized = selectedCountry.normalize(phoneInput)
             if (normalized.isEmpty()) {
-                errorText = context.getString(R.string.login_error_select_country)
+                errorText = resources.getString(R.string.login_error_select_country)
                 return
             }
             keyboard?.hide()
@@ -412,7 +414,7 @@ internal fun LoginScreenView(
                             onClick = {
                                 val remaining = (resendAfter - SystemClock.elapsedRealtime() + 999L) / 1000L
                                 if (remaining > 0L) {
-                                    errorText = context.getString(R.string.login_resend_in, remaining)
+                                    errorText = resources.getString(R.string.login_resend_in, remaining)
                                 } else {
                                     val phone = challenge?.phone() ?: return@BoostyButton
                                     errorText = null
@@ -502,6 +504,7 @@ private fun TvQrLoginScreen(
     onSwitchToPhone: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val palette = BoostyTheme.palette
     var sessionSeed by remember { mutableIntStateOf(0) }
     var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -519,7 +522,7 @@ private fun TvQrLoginScreen(
         var worker: Thread? = null
 
         if (local == null) {
-            statusError = context.getString(R.string.login_pair_tv_not_connected)
+            statusError = resources.getString(R.string.login_pair_tv_not_connected)
         } else {
             try {
                 receiver = TvPairing.Receiver(local, object : TvPairing.Handler {
@@ -566,7 +569,7 @@ private fun TvQrLoginScreen(
                         }
                         return JSONObject()
                     }
-                }, context.resources)
+                }, resources)
 
                 qrBitmap = renderQrBitmap(receiver.invitation(), 480)
                 val activeReceiver = receiver
@@ -577,7 +580,7 @@ private fun TvQrLoginScreen(
                         if (connected) {
                             onSignedIn()
                         } else {
-                            statusError = context.getString(R.string.login_pair_qr_expired)
+                            statusError = resources.getString(R.string.login_pair_qr_expired)
                             qrBitmap = null
                         }
                     }
@@ -587,7 +590,7 @@ private fun TvQrLoginScreen(
                 Log.w("BoostyATV", "Pairing receiver failed to start", e)
                 receiver?.close()
                 receiver = null
-                statusError = context.getString(R.string.login_pair_cannot_open)
+                statusError = resources.getString(R.string.login_pair_cannot_open)
             }
         }
 
@@ -853,8 +856,9 @@ internal fun WebLoginScreenView(
     onFinished: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val palette = BoostyTheme.palette
-    var address by remember { mutableStateOf(context.getString(R.string.login_web_title)) }
+    var address by remember { mutableStateOf(resources.getString(R.string.login_web_title)) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var webViewRef by remember { mutableStateOf<BoostyWebLogin?>(null) }
 
@@ -867,7 +871,7 @@ internal fun WebLoginScreenView(
                 webViewRef?.close(true)
                 webViewRef = null
                 if (target != null) {
-                    Toast.makeText(context, context.getString(R.string.login_pair_connected), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, resources.getString(R.string.login_pair_connected), Toast.LENGTH_SHORT).show()
                 }
                 onFinished()
             },
@@ -948,6 +952,7 @@ internal fun PairInvitationDialog(
     onStartSocialPair: (TvPairing.Sender) -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     var confirmTransfer by remember { mutableStateOf(false) }
     var transferError by remember { mutableStateOf<String?>(null) }
 
@@ -963,7 +968,7 @@ internal fun PairInvitationDialog(
                 backend.transferCurrentAccess(
                     invitation = invitation,
                     onSuccess = {
-                        Toast.makeText(context, context.getString(R.string.login_pair_connected), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, resources.getString(R.string.login_pair_connected), Toast.LENGTH_SHORT).show()
                         onDismiss()
                     },
                     onError = { err -> transferError = err },
