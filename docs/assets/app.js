@@ -7,7 +7,7 @@
   const downloadNodes = document.querySelectorAll("[data-download]");
 
   const formatSize = (bytes) => {
-    if (!Number.isFinite(bytes) || bytes <= 0) return "~2 МБ";
+    if (!Number.isFinite(bytes) || bytes <= 0) return "~3,2 МБ";
     const mb = bytes / (1024 * 1024);
     return `${mb.toFixed(mb >= 10 ? 0 : 1).replace(".", ",")} МБ`;
   };
