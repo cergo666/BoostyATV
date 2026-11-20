@@ -27,9 +27,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -85,6 +87,7 @@ class MainActivity : ComponentActivity() {
     private var historyError by mutableStateOf<String?>(null)
     private var pendingInvitation by mutableStateOf<TvPairing.Sender?>(null)
     private var showLogoutDialog by mutableStateOf(false)
+    private var focusedCoverUrl by mutableStateOf("")
     private var updateUiState by mutableStateOf(UpdateController.UiState(false, false, -1, "", null))
 
     private val scanTv = registerForActivityResult(ScanContract()) { result ->
@@ -346,6 +349,33 @@ class MainActivity : ComponentActivity() {
             is AppRoute.ChannelFeed -> tvMode
             else -> false
         }
+        val activeAmbientUrl = when (route) {
+            is AppRoute.PostDetail -> route.post.cover()
+            AppRoute.Home, is AppRoute.ChannelFeed -> focusedCoverUrl
+            else -> ""
+        }
+        val defaultAccent = BoostyTheme.palette.accent
+        var ambientColor by remember { mutableStateOf(defaultAccent) }
+        var latestAmbientUrl by remember { mutableStateOf("") }
+        latestAmbientUrl = activeAmbientUrl
+
+        LaunchedEffect(activeAmbientUrl, oledEnabled, defaultAccent) {
+            if (oledEnabled || activeAmbientUrl.isEmpty()) {
+                ambientColor = defaultAccent
+                return@LaunchedEffect
+            }
+            val cached = artwork.cachedAmbientColor(activeAmbientUrl)
+            if (cached != null) {
+                ambientColor = Color(cached)
+            } else {
+                val targetUrl = activeAmbientUrl
+                artwork.loadAmbientColor(targetUrl) { argb ->
+                    if (latestAmbientUrl == targetUrl) {
+                        ambientColor = Color(argb)
+                    }
+                }
+            }
+        }
 
         Box(modifier = Modifier.fillMaxSize()) {
             if (playerController.active) {
@@ -365,6 +395,7 @@ class MainActivity : ComponentActivity() {
                         showNavigation = showNav,
                         oled = oledEnabled,
                         onSelectTab = ::selectTab,
+                        ambientColor = ambientColor,
                     ) {
                         when (route) {
                             AppRoute.Login -> LoginScreenView(
@@ -405,6 +436,9 @@ class MainActivity : ComponentActivity() {
                                     onOpenSettings = { selectTab(AppTab.SETTINGS) },
                                     onOpenAbout = ::showAbout,
                                     onRequestLogout = { showLogoutDialog = true },
+                                    authorsState = ensureAuthorsState(),
+                                    onOpenAuthor = { slug, name -> showFeed(slug, name, push = true) },
+                                    onFocusArtwork = { url -> focusedCoverUrl = url },
                                 )
                             }
 
@@ -419,6 +453,7 @@ class MainActivity : ComponentActivity() {
                                 onOpenSettings = { selectTab(AppTab.SETTINGS) },
                                 onOpenAbout = ::showAbout,
                                 onRequestLogout = { showLogoutDialog = true },
+                                onFocusArtwork = { url -> focusedCoverUrl = url },
                             )
 
                             AppRoute.Channels -> {
@@ -622,6 +657,9 @@ class MainActivity : ComponentActivity() {
             while (backStack.size > Navigator.LIMIT) backStack.removeAt(0)
         }
         currentRoute = route
+        if (route !is AppRoute.Home && route !is AppRoute.ChannelFeed) {
+            focusedCoverUrl = ""
+        }
         currentFeed = when (route) {
             AppRoute.Home -> homeFeed
             is AppRoute.ChannelFeed -> route.state

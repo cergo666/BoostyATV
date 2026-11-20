@@ -98,17 +98,22 @@ import androidx.compose.ui.zIndex
 internal fun AmbientBackdrop(
     modifier: Modifier = Modifier,
     oled: Boolean = false,
+    accentColor: Color = BoostyTheme.palette.accent,
 ) {
     if (oled) return
-    val palette = BoostyTheme.palette
+    val animatedColor by animateColorAsState(
+        targetValue = accentColor,
+        animationSpec = tween(durationMillis = 550, easing = FastOutSlowInEasing),
+        label = "ambientColor",
+    )
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(
                 Brush.radialGradient(
                     colors = listOf(
-                        palette.accent.copy(alpha = 0.085f),
-                        Color(0xFF281F3A).copy(alpha = 0.06f),
+                        animatedColor.copy(alpha = 0.16f),
+                        animatedColor.copy(alpha = 0.05f),
                         Color.Transparent,
                     ),
                     center = Offset(380f, -60f),

@@ -3,6 +3,7 @@ package ru.boostyatv.client;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -55,6 +56,7 @@ final class Artwork {
     private final LruCache<Request, Bitmap> cache = new LruCache<>(cacheSize()) {
         @Override protected int sizeOf(Request key, Bitmap bitmap) { return bitmap.getByteCount(); }
     };
+    private final LruCache<String, Integer> ambientColors = new LruCache<>(128);
     private long spaceBeforeTrim;
 
     Artwork(Context context) {
@@ -93,12 +95,77 @@ final class Artwork {
         future.whenComplete((bitmap, error) -> inFlight.remove(request, future));
     }
 
+    Integer cachedAmbientColor(String url) {
+        if (url == null || url.isEmpty()) return null;
+        return ambientColors.get(url);
+    }
+
+    void loadAmbientColor(String url, Consumer<Integer> onResult) {
+        if (url == null || url.isEmpty()) return;
+        Integer cached = ambientColors.get(url);
+        if (cached != null) {
+            onResult.accept(cached);
+            return;
+        }
+        loadBitmap(url, THUMBNAIL, false, bitmap -> {
+            if (workers.isShutdown()) return;
+            try {
+                workers.execute(() -> {
+                    int color = extractAmbientColor(bitmap);
+                    ambientColors.put(url, color);
+                    main.post(() -> onResult.accept(color));
+                });
+            } catch (java.util.concurrent.RejectedExecutionException ignored) {
+                // Loader closed while scrolling away.
+            }
+        });
+    }
+
+    private static int extractAmbientColor(Bitmap bitmap) {
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        if (width <= 0 || height <= 0) return 0xFFFF7A4D;
+        float[] hsv = new float[3];
+        double sumX = 0.0;
+        double sumY = 0.0;
+        double totalWeight = 0.0;
+        float sumS = 0f;
+        float sumV = 0f;
+        int count = 0;
+        int samples = 12;
+        for (int iy = 0; iy < samples; iy++) {
+            int y = Math.min(height - 1, (iy * height) / samples + height / (samples * 2));
+            for (int ix = 0; ix < samples; ix++) {
+                int x = Math.min(width - 1, (ix * width) / samples + width / (samples * 2));
+                int pixel = bitmap.getPixel(x, y);
+                if (Color.alpha(pixel) < 128) continue;
+                Color.colorToHSV(pixel, hsv);
+                if (hsv[2] < 0.15f || hsv[1] < 0.12f) continue;
+                double weight = hsv[1] * (0.4 + 0.6 * hsv[2]);
+                double rad = Math.toRadians(hsv[0]);
+                sumX += Math.cos(rad) * weight;
+                sumY += Math.sin(rad) * weight;
+                totalWeight += weight;
+                sumS += hsv[1];
+                sumV += hsv[2];
+                count++;
+            }
+        }
+        if (count == 0 || totalWeight <= 0.001) return 0xFFFF7A4D;
+        float hue = (float) Math.toDegrees(Math.atan2(sumY, sumX));
+        if (hue < 0f) hue += 360f;
+        float saturation = Math.max(0.45f, Math.min(0.78f, sumS / count));
+        float value = Math.max(0.55f, Math.min(0.80f, sumV / count));
+        return Color.HSVToColor(new float[]{hue, saturation, value});
+    }
+
     void close() {
         workers.shutdownNow();
         featured.shutdownNow();
         inFlight.clear();
         failures.clear();
         cache.evictAll();
+        ambientColors.evictAll();
     }
 
     private void rememberFailure(String url) {

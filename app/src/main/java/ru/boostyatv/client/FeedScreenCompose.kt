@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -30,6 +31,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -47,8 +49,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -60,6 +65,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -272,7 +278,7 @@ internal class FeedState(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 internal fun FeedScreenView(
     state: FeedState,
@@ -285,6 +291,9 @@ internal fun FeedScreenView(
     onOpenSettings: () -> Unit,
     onOpenAbout: () -> Unit,
     onRequestLogout: () -> Unit,
+    authorsState: AuthorsState? = null,
+    onOpenAuthor: (slug: String, name: String) -> Unit = { _, _ -> },
+    onFocusArtwork: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val palette = BoostyTheme.palette
@@ -295,6 +304,12 @@ internal fun FeedScreenView(
     var showTagsSheet by remember { mutableStateOf(false) }
     var showNoTagsNotice by remember { mutableStateOf(false) }
     var showAccountMenu by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isHome, authorsState) {
+        if (isHome && authorsState != null) {
+            authorsState.ensureLoaded()
+        }
+    }
 
     val continueWatching = remember(progressRevision, isHome, state.videosOnly, state.search, state.selectedTags) {
         if (!isHome || !state.unfiltered()) {
@@ -385,7 +400,9 @@ internal fun FeedScreenView(
                     ),
                     horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 14.dp),
                     verticalArrangement = Arrangement.spacedBy(if (isTv) 24.dp else 18.dp),
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(if (isTv) Modifier.focusRestorer().focusGroup() else Modifier),
                 ) {
                     item(key = "feed_header", span = { GridItemSpan(maxLineSpan) }) {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -457,12 +474,22 @@ internal fun FeedScreenView(
                         }
                     }
 
+                    if (isHome && state.unfiltered() && authorsState != null && authorsState.items.isNotEmpty()) {
+                        item(key = "home_channels", span = { GridItemSpan(maxLineSpan) }) {
+                            HomeChannelsShelf(
+                                authors = authorsState.items,
+                                onOpenAuthor = onOpenAuthor,
+                            )
+                        }
+                    }
+
                     if (continueWatching.isNotEmpty()) {
                         item(key = "continue_watching", span = { GridItemSpan(maxLineSpan) }) {
                             ContinueWatchingShelf(
                                 items = continueWatching,
                                 watchHistory = watchHistory,
                                 onOpenRecent = onOpenRecentPost,
+                                onFocusArtwork = onFocusArtwork,
                             )
                         }
                     }
@@ -483,6 +510,7 @@ internal fun FeedScreenView(
                                 post = post,
                                 progressPercent = progressPercent,
                                 onClick = { onOpenPost(post) },
+                                onFocusArtwork = onFocusArtwork,
                             )
                         }
                     }
@@ -648,10 +676,103 @@ internal fun FeedScreenView(
 }
 
 @Composable
+private fun HomeChannelsShelf(
+    authors: List<BoostyApi.Author>,
+    onOpenAuthor: (slug: String, name: String) -> Unit,
+) {
+    val palette = BoostyTheme.palette
+    val isTv = BoostyTheme.isTv
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.feed_your_channels),
+            style = MaterialTheme.typography.titleLarge,
+            color = palette.ink,
+        )
+        LazyRow(
+            contentPadding = PaddingValues(
+                horizontal = if (isTv) 10.dp else 2.dp,
+                vertical = if (isTv) 10.dp else 4.dp,
+            ),
+            horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
+        ) {
+            items(authors, key = { it.slug() }) { author ->
+                HomeChannelItem(
+                    author = author,
+                    onClick = { onOpenAuthor(author.slug(), author.name()) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeChannelItem(
+    author: BoostyApi.Author,
+    onClick: () -> Unit,
+) {
+    val palette = BoostyTheme.palette
+    val isTv = BoostyTheme.isTv
+    var focused by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (focused && isTv) 1.08f else 1f,
+        animationSpec = tween(140, easing = FastOutSlowInEasing),
+        label = "channelChipScale",
+    )
+    val avatarSize = if (isTv) 60.dp else 52.dp
+    Column(
+        modifier = Modifier
+            .width(if (isTv) 92.dp else 74.dp)
+            .zIndex(if (focused) 2f else 0f)
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(role = Role.Button, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(avatarSize)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .shadow(
+                    elevation = if (focused && isTv) 14.dp else 0.dp,
+                    shape = CircleShape,
+                    ambientColor = palette.accent.copy(alpha = 0.6f),
+                    spotColor = Color.White.copy(alpha = 0.4f),
+                )
+                .clip(CircleShape)
+                .border(
+                    width = if (focused) 2.5.dp else 1.dp,
+                    color = if (focused) palette.focusRing else palette.hairline,
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            BoostyAvatar(url = author.image(), size = avatarSize)
+        }
+        Spacer(Modifier.height(7.dp))
+        Text(
+            text = author.name(),
+            style = MaterialTheme.typography.labelMedium,
+            color = if (focused) Color.White else palette.ink,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 private fun ContinueWatchingShelf(
     items: List<WatchHistory.RecentPost>,
     watchHistory: WatchHistory,
     onOpenRecent: (WatchHistory.RecentPost) -> Unit,
+    onFocusArtwork: (String) -> Unit,
 ) {
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
@@ -667,6 +788,10 @@ private fun ContinueWatchingShelf(
             color = palette.ink,
         )
         LazyRow(
+            contentPadding = PaddingValues(
+                horizontal = if (isTv) 10.dp else 2.dp,
+                vertical = if (isTv) 12.dp else 4.dp,
+            ),
             horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
         ) {
             items(items, key = { "${it.slug()}_${it.id()}" }) { recent ->
@@ -679,6 +804,7 @@ private fun ContinueWatchingShelf(
                     progressPercent = progress.percentage(),
                     onClick = { onOpenRecent(recent) },
                     modifier = Modifier.width(if (isTv) 268.dp else 224.dp),
+                    onFocusArtwork = onFocusArtwork,
                 )
             }
         }
@@ -691,6 +817,7 @@ internal fun PostFeedCard(
     progressPercent: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onFocusArtwork: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val palette = BoostyTheme.palette
@@ -725,7 +852,10 @@ internal fun PostFeedCard(
                 .fillMaxWidth()
                 .zIndex(if (focused) 2f else 0f)
                 .semantics { contentDescription = description }
-                .onFocusChanged { focused = it.isFocused }
+                .onFocusChanged {
+                    focused = it.isFocused
+                    if (it.isFocused && post.cover().isNotEmpty()) onFocusArtwork(post.cover())
+                }
                 .clickable(role = Role.Button, onClick = onClick),
         ) {
             Box(
@@ -736,6 +866,12 @@ internal fun PostFeedCard(
                         scaleX = scale
                         scaleY = scale
                     }
+                    .shadow(
+                        elevation = if (focused) 18.dp else 0.dp,
+                        shape = CardShape,
+                        ambientColor = palette.accent.copy(alpha = 0.6f),
+                        spotColor = Color.White.copy(alpha = 0.45f),
+                    )
                     .clip(CardShape)
                     .border(
                         width = if (focused) 2.5.dp else 1.dp,
@@ -847,6 +983,7 @@ internal fun CompactVideoCard(
     progressPercent: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onFocusArtwork: (String) -> Unit = {},
 ) {
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
@@ -861,7 +998,10 @@ internal fun CompactVideoCard(
     Column(
         modifier = modifier
             .zIndex(if (focused) 2f else 0f)
-            .onFocusChanged { focused = it.isFocused }
+            .onFocusChanged {
+                focused = it.isFocused
+                if (it.isFocused && coverUrl.isNotEmpty()) onFocusArtwork(coverUrl)
+            }
             .clickable(role = Role.Button, onClick = onClick),
     ) {
         Box(
@@ -872,6 +1012,12 @@ internal fun CompactVideoCard(
                     scaleX = scale
                     scaleY = scale
                 }
+                .shadow(
+                    elevation = if (focused && isTv) 16.dp else 0.dp,
+                    shape = CardShape,
+                    ambientColor = palette.accent.copy(alpha = 0.6f),
+                    spotColor = Color.White.copy(alpha = 0.45f),
+                )
                 .clip(CardShape)
                 .border(
                     width = if (focused) 2.5.dp else 1.dp,

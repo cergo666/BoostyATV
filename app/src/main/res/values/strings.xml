@@ -246,6 +246,7 @@
     <string name="account_logout_hint">End the session on this device</string>
     <string name="account_section_session">Session</string>
     <string name="feed_continue_watching">Continue watching</string>
+    <string name="feed_your_channels">Your channels</string>
     <string name="login_tv_qr_headline">Sign in with your phone</string>
     <string name="login_tv_qr_refresh">Generate new QR code</string>
     <string name="login_tv_use_phone_number">Sign in by phone number</string>

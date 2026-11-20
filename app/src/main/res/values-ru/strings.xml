@@ -246,6 +246,7 @@
     <string name="account_logout_hint">Завершить сеанс на этом устройстве</string>
     <string name="account_section_session">Сеанс</string>
     <string name="feed_continue_watching">Продолжить просмотр</string>
+    <string name="feed_your_channels">Ваши каналы</string>
     <string name="login_tv_qr_headline">Быстрый вход с телефона</string>
     <string name="login_tv_qr_refresh">Обновить QR-код</string>
     <string name="login_tv_use_phone_number">Войти по номеру телефона</string>
