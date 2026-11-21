@@ -108,7 +108,7 @@ keyPassword=...
 
 ## Автор
 
-[Sergey Molchanov (cergo666)](https://github.com/cergo666)
+[@cergo666](https://github.com/cergo666)
 
 ## История звёзд
 
