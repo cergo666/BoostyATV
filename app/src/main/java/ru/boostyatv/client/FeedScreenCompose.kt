@@ -5,10 +5,13 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,6 +30,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridPrefetchStrategy
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -39,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
@@ -87,13 +92,34 @@ internal interface FeedBackend {
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
+private object TvPivotBringIntoViewSpec : BringIntoViewSpec {
+    private const val PARENT_FRACTION = 0.22f
+    private const val CHILD_FRACTION = 0.0f
+
+    override fun calculateScrollDistance(
+        offset: Float,
+        size: Float,
+        containerSize: Float,
+    ): Float {
+        val leadingEdgeOfItemRequestingFocus = offset
+        val trailingEdgeOfItemRequestingFocus = offset + size
+        val sizeOfItemRequestingFocus = trailingEdgeOfItemRequestingFocus - leadingEdgeOfItemRequestingFocus
+        val targetPosition = containerSize * PARENT_FRACTION - sizeOfItemRequestingFocus * CHILD_FRACTION
+        return leadingEdgeOfItemRequestingFocus - targetPosition
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Stable
 internal class FeedState(
     val author: String?,
     val title: String?,
     private val backend: FeedBackend,
 ) {
-    val gridState = LazyGridState()
+    val gridState = LazyGridState(
+        prefetchStrategy = LazyGridPrefetchStrategy(nestedPrefetchItemCount = 4),
+    )
     val visible = mutableStateListOf<Post>()
     private val loaded = ArrayList<Post>()
     private val seen = HashSet<String>()
@@ -207,9 +233,9 @@ internal class FeedState(
         if (failed) load(next)
     }
 
-    fun maybeLoadMore(lastVisibleIndex: Int) {
+    fun maybeLoadMore(lastVisibleIndex: Int, prefetchThreshold: Int = 8) {
         if (loading || failed || next.isEmpty()) return
-        if (pendingScroll > visible.size || visible.isEmpty() || lastVisibleIndex >= visible.size - 3) {
+        if (pendingScroll > visible.size || visible.isEmpty() || lastVisibleIndex >= visible.size - prefetchThreshold) {
             load(next)
         }
     }
@@ -331,13 +357,30 @@ internal fun FeedScreenView(
         }
     }
 
+    val artwork = LocalArtwork.current
     val lastVisibleIndex by remember(state) {
         derivedStateOf {
             state.gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
         }
     }
-    LaunchedEffect(lastVisibleIndex, state.visible.size, state.next, state.loading) {
-        state.maybeLoadMore(lastVisibleIndex)
+    LaunchedEffect(lastVisibleIndex, state.visible.size, state.next, state.loading, isTv) {
+        val threshold = if (isTv) 12 else 8
+        state.maybeLoadMore(lastVisibleIndex, prefetchThreshold = threshold)
+    }
+
+    // Proactively warm disk+RAM artwork cache ahead of the viewport (YouTube/SmartTube style)
+    LaunchedEffect(lastVisibleIndex, state.visible.size, artwork) {
+        if (artwork == null || state.visible.isEmpty()) return@LaunchedEffect
+        val ahead = if (isTv) 12 else 6
+        val start = (lastVisibleIndex - 2).coerceAtLeast(0)
+        val end = (lastVisibleIndex + ahead).coerceAtMost(state.visible.lastIndex)
+        for (idx in start..end) {
+            val post = state.visible[idx]
+            val cover = post.cover()
+            if (cover.isNotEmpty()) artwork.prefetch(cover, Artwork.THUMBNAIL)
+            val avatar = post.authorAvatar()
+            if (avatar.isNotEmpty()) artwork.prefetch(avatar, Artwork.AVATAR)
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -404,7 +447,7 @@ internal fun FeedScreenView(
                         .fillMaxSize()
                         .then(if (isTv) Modifier.focusRestorer().focusGroup() else Modifier),
                 ) {
-                    item(key = "feed_header", span = { GridItemSpan(maxLineSpan) }) {
+                    item(key = "feed_header", contentType = "header", span = { GridItemSpan(maxLineSpan) }) {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             if (isHome) {
                                 BoostySegmentedControl(
@@ -475,7 +518,7 @@ internal fun FeedScreenView(
                     }
 
                     if (isHome && state.unfiltered() && authorsState != null && authorsState.items.isNotEmpty()) {
-                        item(key = "home_channels", span = { GridItemSpan(maxLineSpan) }) {
+                        item(key = "home_channels", contentType = "channels", span = { GridItemSpan(maxLineSpan) }) {
                             HomeChannelsShelf(
                                 authors = authorsState.items,
                                 onOpenAuthor = onOpenAuthor,
@@ -484,7 +527,7 @@ internal fun FeedScreenView(
                     }
 
                     if (continueWatching.isNotEmpty()) {
-                        item(key = "continue_watching", span = { GridItemSpan(maxLineSpan) }) {
+                        item(key = "continue_watching", contentType = "continue", span = { GridItemSpan(maxLineSpan) }) {
                             ContinueWatchingShelf(
                                 items = continueWatching,
                                 watchHistory = watchHistory,
@@ -495,13 +538,14 @@ internal fun FeedScreenView(
                     }
 
                     if (state.visible.isEmpty() && state.loading) {
-                        items(count = columns * 2, key = { "skeleton_$it" }) {
+                        items(count = columns * 2, key = { "skeleton_$it" }, contentType = { "skeleton" }) {
                             PostCardSkeleton(isTv = isTv)
                         }
                     } else {
                         items(
                             items = state.visible,
                             key = { it.id() },
+                            contentType = { "post" },
                         ) { post ->
                             val progressPercent = remember(post.id(), progressRevision) {
                                 post.watchProgressPercent(watchHistory)
@@ -515,7 +559,7 @@ internal fun FeedScreenView(
                         }
                     }
 
-                    item(key = "feed_footer", span = { GridItemSpan(maxLineSpan) }) {
+                    item(key = "feed_footer", contentType = "footer", span = { GridItemSpan(maxLineSpan) }) {
                         val footerText = when {
                             state.failed -> stringResource(R.string.error_load_failed)
                             state.loading && state.visible.isNotEmpty() -> stringResource(R.string.feed_loading_publications)
@@ -549,7 +593,10 @@ internal fun FeedScreenView(
             }
 
             if (isTv) {
-                gridContent()
+                @OptIn(ExperimentalFoundationApi::class)
+                CompositionLocalProvider(LocalBringIntoViewSpec provides TvPivotBringIntoViewSpec) {
+                    gridContent()
+                }
             } else {
                 PullToRefreshBox(
                     isRefreshing = state.refreshing,
@@ -700,7 +747,7 @@ private fun HomeChannelsShelf(
             ),
             horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
         ) {
-            items(authors, key = { it.slug() }) { author ->
+            items(authors, key = { it.slug() }, contentType = { "channel_chip" }) { author ->
                 HomeChannelItem(
                     author = author,
                     onClick = { onOpenAuthor(author.slug(), author.name()) },
@@ -794,7 +841,7 @@ private fun ContinueWatchingShelf(
             ),
             horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
         ) {
-            items(items, key = { "${it.slug()}_${it.id()}" }) { recent ->
+            items(items, key = { "${it.slug()}_${it.id()}" }, contentType = { "continue_card" }) { recent ->
                 val progress = watchHistory.progressForVideo(recent.videoId(), recent.durationMs())
                 CompactVideoCard(
                     title = recent.title().ifEmpty { stringResource(R.string.post_untitled) },
@@ -820,155 +867,229 @@ internal fun PostFeedCard(
     onFocusArtwork: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
-    val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
-    var focused by remember { mutableStateOf(false) }
-
-    val scale by animateFloatAsState(
-        targetValue = if (focused && isTv) 1.055f else 1f,
-        animationSpec = tween(150, easing = FastOutSlowInEasing),
-        label = "cardScale",
-    )
-    val titleText = post.displayTitle(context)
-    val authorText = post.author().ifEmpty { stringResource(R.string.post_app_name) }
-    val details = post.displayMetadata(context)
-    val durationLabel = remember(post.id()) { formatDurationShort(post.primaryDurationMs()) }
+    val fallbackAuthor = stringResource(R.string.post_app_name)
     val videoSuffix = stringResource(R.string.post_video_suffix)
-    val description = buildString {
-        append(titleText)
-        append(", ")
-        append(authorText)
-        if (details.isNotEmpty()) {
+
+    val titleText = remember(post.id(), post.title()) { post.displayTitle(context) }
+    val authorText = remember(post.id(), post.author(), fallbackAuthor) {
+        post.author().ifEmpty { fallbackAuthor }
+    }
+    val details = remember(post.id(), post.published(), post.views()) {
+        post.displayMetadata(context)
+    }
+    val subtitleText = remember(authorText, details) {
+        if (details.isEmpty()) authorText else "$authorText  ·  $details"
+    }
+    val durationLabel = remember(post.id()) { formatDurationShort(post.primaryDurationMs()) }
+    val description = remember(titleText, authorText, details, videoSuffix, post.id()) {
+        buildString {
+            append(titleText)
             append(", ")
-            append(details)
+            append(authorText)
+            if (details.isNotEmpty()) {
+                append(", ")
+                append(details)
+            }
+            if (post.hasVideo()) append(videoSuffix)
         }
-        if (post.hasVideo()) append(videoSuffix)
     }
 
     if (isTv) {
-        // Modern borderless 10-foot card: focus ring & zoom live on the 16:9 poster
-        Column(
-            modifier = modifier
-                .fillMaxWidth()
-                .zIndex(if (focused) 2f else 0f)
-                .semantics { contentDescription = description }
-                .onFocusChanged {
-                    focused = it.isFocused
-                    if (it.isFocused && post.cover().isNotEmpty()) onFocusArtwork(post.cover())
-                }
-                .clickable(role = Role.Button, onClick = onClick),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                    }
-                    .shadow(
-                        elevation = if (focused) 18.dp else 0.dp,
-                        shape = CardShape,
-                        ambientColor = palette.accent.copy(alpha = 0.6f),
-                        spotColor = Color.White.copy(alpha = 0.45f),
-                    )
-                    .clip(CardShape)
-                    .border(
-                        width = if (focused) 2.5.dp else 1.dp,
-                        color = if (focused) palette.focusRing else palette.hairline,
-                        shape = CardShape,
-                    ),
-            ) {
-                VideoCoverArtwork(
-                    coverUrl = post.cover(),
-                    hasVideo = post.hasVideo(),
-                    durationLabel = durationLabel,
-                    progressPercent = progressPercent,
-                )
+        TvPostFeedCard(
+            coverUrl = post.cover(),
+            hasVideo = post.hasVideo(),
+            authorAvatar = post.authorAvatar(),
+            titleText = titleText,
+            subtitleText = subtitleText,
+            durationLabel = durationLabel,
+            description = description,
+            progressPercent = progressPercent,
+            onClick = onClick,
+            onFocusArtwork = onFocusArtwork,
+            modifier = modifier,
+        )
+    } else {
+        PhonePostFeedCard(
+            coverUrl = post.cover(),
+            hasVideo = post.hasVideo(),
+            authorAvatar = post.authorAvatar(),
+            titleText = titleText,
+            subtitleText = subtitleText,
+            durationLabel = durationLabel,
+            description = description,
+            progressPercent = progressPercent,
+            onClick = onClick,
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun TvPostFeedCard(
+    coverUrl: String,
+    hasVideo: Boolean,
+    authorAvatar: String,
+    titleText: String,
+    subtitleText: String,
+    durationLabel: String,
+    description: String,
+    progressPercent: Int,
+    onClick: () -> Unit,
+    onFocusArtwork: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val palette = BoostyTheme.palette
+    var focused by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (focused) 1.055f else 1f,
+        animationSpec = tween(140, easing = FastOutSlowInEasing),
+        label = "cardScale",
+    )
+    val elevated = focused || scale > 1.001f
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (elevated) Modifier.zIndex(2f) else Modifier)
+            .semantics { contentDescription = description }
+            .onFocusChanged {
+                focused = it.isFocused
+                if (it.isFocused && coverUrl.isNotEmpty()) onFocusArtwork(coverUrl)
             }
-
-            Spacer(Modifier.height(10.dp))
-
-            Row(
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.padding(horizontal = 2.dp),
-            ) {
-                BoostyAvatar(
-                    url = post.authorAvatar(),
-                    size = 28.dp,
-                    modifier = Modifier.padding(top = 2.dp),
+            .clickable(role = Role.Button, onClick = onClick),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .then(
+                    if (elevated) {
+                        Modifier
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                            .shadow(
+                                elevation = if (focused) 18.dp else 0.dp,
+                                shape = CardShape,
+                                ambientColor = palette.accent.copy(alpha = 0.6f),
+                                spotColor = Color.White.copy(alpha = 0.45f),
+                            )
+                    } else {
+                        Modifier
+                    }
                 )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = titleText,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = if (focused) Color.White else palette.ink,
-                        minLines = 2,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        text = if (details.isEmpty()) authorText else "$authorText  ·  $details",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (focused) palette.ink.copy(alpha = 0.78f) else palette.muted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                .clip(CardShape)
+                .border(
+                    width = if (focused) 2.5.dp else 1.dp,
+                    color = if (focused) palette.focusRing else palette.hairline,
+                    shape = CardShape,
+                ),
+        ) {
+            VideoCoverArtwork(
+                coverUrl = coverUrl,
+                hasVideo = hasVideo,
+                durationLabel = durationLabel,
+                progressPercent = progressPercent,
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        Row(
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(horizontal = 2.dp),
+        ) {
+            BoostyAvatar(
+                url = authorAvatar,
+                size = 28.dp,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = titleText,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (focused) Color.White else palette.ink,
+                    minLines = 2,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = subtitleText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (focused) palette.ink.copy(alpha = 0.78f) else palette.muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
-    } else {
-        // Clean full-bleed phone card
-        Column(
-            modifier = modifier
+    }
+}
+
+@Composable
+private fun PhonePostFeedCard(
+    coverUrl: String,
+    hasVideo: Boolean,
+    authorAvatar: String,
+    titleText: String,
+    subtitleText: String,
+    durationLabel: String,
+    description: String,
+    progressPercent: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val palette = BoostyTheme.palette
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = description }
+            .clip(CardShape)
+            .background(palette.surface)
+            .border(1.dp, palette.hairline, CardShape)
+            .clickable(role = Role.Button, onClick = onClick),
+    ) {
+        Box(
+            modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = description }
-                .clip(CardShape)
-                .background(palette.surface)
-                .border(1.dp, palette.hairline, CardShape)
-                .clickable(role = Role.Button, onClick = onClick),
+                .aspectRatio(16f / 9f),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f),
-            ) {
-                VideoCoverArtwork(
-                    coverUrl = post.cover(),
-                    hasVideo = post.hasVideo(),
-                    durationLabel = durationLabel,
-                    progressPercent = progressPercent,
+            VideoCoverArtwork(
+                coverUrl = coverUrl,
+                hasVideo = hasVideo,
+                durationLabel = durationLabel,
+                progressPercent = progressPercent,
+            )
+        }
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            BoostyAvatar(
+                url = authorAvatar,
+                size = 34.dp,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = titleText,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = palette.ink,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            }
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                BoostyAvatar(
-                    url = post.authorAvatar(),
-                    size = 34.dp,
-                    modifier = Modifier.padding(top = 2.dp),
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = subtitleText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = palette.muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = titleText,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = palette.ink,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = if (details.isEmpty()) authorText else "$authorText  ·  $details",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = palette.muted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
             }
         }
     }

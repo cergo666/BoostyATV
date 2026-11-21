@@ -92,7 +92,7 @@ internal fun AppNavigationShell(
     showNavigation: Boolean,
     oled: Boolean,
     onSelectTab: (AppTab) -> Unit,
-    ambientColor: Color = BoostyTheme.palette.accent,
+    backdrop: @Composable () -> Unit = { AmbientBackdrop(oled = oled) },
     content: @Composable () -> Unit,
 ) {
     val palette = BoostyTheme.palette
@@ -103,7 +103,7 @@ internal fun AppNavigationShell(
             .fillMaxSize()
             .background(palette.background),
     ) {
-        AmbientBackdrop(oled = oled, accentColor = ambientColor)
+        backdrop()
 
         if (isTv) {
             if (showNavigation) {

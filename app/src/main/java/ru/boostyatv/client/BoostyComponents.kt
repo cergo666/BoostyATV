@@ -64,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -106,20 +107,22 @@ internal fun AmbientBackdrop(
         animationSpec = tween(durationMillis = 550, easing = FastOutSlowInEasing),
         label = "ambientColor",
     )
-    Box(
+    Spacer(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        animatedColor.copy(alpha = 0.16f),
-                        animatedColor.copy(alpha = 0.05f),
-                        Color.Transparent,
-                    ),
-                    center = Offset(380f, -60f),
-                    radius = 960f,
+            .drawBehind {
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            animatedColor.copy(alpha = 0.16f),
+                            animatedColor.copy(alpha = 0.05f),
+                            Color.Transparent,
+                        ),
+                        center = Offset(380f, -60f),
+                        radius = 960f,
+                    )
                 )
-            )
+            }
     )
 }
 
@@ -168,57 +171,70 @@ internal fun BoostyArtworkImage(
 ) {
     val artwork = LocalArtwork.current
     val palette = BoostyTheme.palette
-    var bitmap by remember(url, size) { mutableStateOf<Bitmap?>(artwork?.cached(url, size)) }
-    var animateIn by remember(url, size) { mutableStateOf(bitmap == null) }
+    val initialBitmap = remember(url, size, artwork) { artwork?.cached(url, size) }
+    var bitmap by remember(url, size) { mutableStateOf(initialBitmap) }
+    val needsFade = remember(url, size) { initialBitmap == null }
 
-    LaunchedEffect(url, size, artwork) {
-        if (url.isEmpty() || artwork == null) {
-            bitmap = null
-            return@LaunchedEffect
-        }
-        val cached = artwork.cached(url, size)
-        if (cached != null) {
-            bitmap = cached
-            if (size == Artwork.PREVIEW) {
-                artwork.loadBitmap(url, size, priority) { loaded ->
-                    bitmap = loaded
-                }
+    if (initialBitmap == null || size == Artwork.PREVIEW) {
+        LaunchedEffect(url, size, artwork) {
+            if (url.isEmpty() || artwork == null) {
+                bitmap = null
+                return@LaunchedEffect
             }
-            return@LaunchedEffect
-        }
-        artwork.loadBitmap(url, size, priority) { loaded ->
-            bitmap = loaded
+            val cached = artwork.cached(url, size)
+            if (cached != null) {
+                bitmap = cached
+                if (size == Artwork.PREVIEW) {
+                    artwork.loadBitmap(url, size, priority) { loaded ->
+                        bitmap = loaded
+                    }
+                }
+                return@LaunchedEffect
+            }
+            artwork.loadBitmap(url, size, priority) { loaded ->
+                bitmap = loaded
+            }
         }
     }
-
-    val alpha by animateFloatAsState(
-        targetValue = if (bitmap != null) 1f else 0f,
-        animationSpec = tween(durationMillis = if (animateIn) 180 else 0, easing = FastOutSlowInEasing),
-        label = "artworkFade",
-    )
 
     Box(
         modifier = modifier.background(palette.surfaceElevated),
         contentAlignment = Alignment.Center,
     ) {
-        if (bitmap == null && placeholderIcon != null) {
-            Icon(
-                painter = painterResource(placeholderIcon),
-                contentDescription = null,
-                tint = palette.muted.copy(alpha = 0.45f),
-                modifier = Modifier.size(28.dp),
-            )
-        }
-        bitmap?.let { loaded ->
+        val loaded = bitmap
+        if (loaded == null) {
+            if (placeholderIcon != null) {
+                Icon(
+                    painter = painterResource(placeholderIcon),
+                    contentDescription = null,
+                    tint = palette.muted.copy(alpha = 0.45f),
+                    modifier = Modifier.size(28.dp),
+                )
+            }
+        } else {
             val imageBitmap = remember(loaded) { loaded.asImageBitmap() }
-            Image(
-                bitmap = imageBitmap,
-                contentDescription = contentDescription,
-                contentScale = contentScale,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(alpha),
-            )
+            if (needsFade) {
+                val alpha by animateFloatAsState(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+                    label = "artworkFade",
+                )
+                Image(
+                    bitmap = imageBitmap,
+                    contentDescription = contentDescription,
+                    contentScale = contentScale,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { this.alpha = alpha },
+                )
+            } else {
+                Image(
+                    bitmap = imageBitmap,
+                    contentDescription = contentDescription,
+                    contentScale = contentScale,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
 }
