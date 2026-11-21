@@ -216,6 +216,52 @@ final class BoostyApi {
         return new Comments(comments, next.equals(offset) ? "" : next);
     }
 
+    /** Publishes a new comment or reply on Boosty and returns the parsed server entry. */
+    synchronized Comment addComment(Post post, long replyToIntId, String text) throws Exception {
+        String trimmed = text == null ? "" : text.trim();
+        if (trimmed.isEmpty()) throw new IOException("Comment text is empty");
+        JSONArray blocks = new JSONArray();
+        String[] lines = trimmed.replace("\r\n", "\n").split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            if (!line.isEmpty()) {
+                JSONArray rich = new JSONArray().put(line).put("unstyled").put(new JSONArray());
+                blocks.put(new JSONObject()
+                    .put("type", "text")
+                    .put("content", rich.toString())
+                    .put("modificator", ""));
+            }
+            if (i < lines.length - 1) {
+                blocks.put(new JSONObject()
+                    .put("type", "text")
+                    .put("content", "")
+                    .put("modificator", "LINE_BREAK"));
+            }
+        }
+        blocks.put(new JSONObject()
+            .put("type", "text")
+            .put("content", "")
+            .put("modificator", "BLOCK_END"));
+        String path = postPath(post) + "/comment/?from_page=post";
+        String body = replyToIntId > 0
+            ? form("data", blocks.toString(), "reply_id", Long.toString(replyToIntId))
+            : form("data", blocks.toString());
+        JSONObject row = authenticated("POST", path, body);
+        JSONObject dataObj = row.optJSONObject("data");
+        if (dataObj != null && !row.has("intId")) row = dataObj;
+        JSONObject author = row.optJSONObject("author");
+        return new Comment(
+            row.optLong("intId"),
+            Post.string(row, "id"),
+            Post.string(author, "name"),
+            Post.avatar(author),
+            row.optLong("createdAt", System.currentTimeMillis() / 1000L),
+            Post.blocks(row.optJSONArray("data"), false),
+            row.optInt("replyCount"),
+            Reactions.parse(row)
+        );
+    }
+
     synchronized void setReaction(Post post, String commentId, String choice) throws Exception {
         String path = postPath(post);
         if (!commentId.isEmpty()) path += "/comment/" + Uri.encode(commentId);

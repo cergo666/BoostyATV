@@ -173,6 +173,8 @@ internal class PlayerSessionController(
         private set
     var videoAuthor by mutableStateOf("")
         private set
+    var videoAuthorSlug by mutableStateOf("")
+        private set
     var isPlaying by mutableStateOf(false)
         private set
     var isBuffering by mutableStateOf(false)
@@ -243,11 +245,12 @@ internal class PlayerSessionController(
         video = block
         videoTitle = block.text().ifBlank { post.displayTitle(activity) }
         videoAuthor = post.author()
+        videoAuthorSlug = post.slug()
         mediaId = UUID.randomUUID().toString()
         reconnectAttempted = false
         playbackError = false
         requestNotificationPermission()
-        playbackSpeed = 1f
+        playbackSpeed = callbacks.playbackOptions.speedFor(videoAuthorSlug)
         resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
         videoFormat = null
         audioFormat = null
@@ -402,6 +405,7 @@ internal class PlayerSessionController(
 
     fun setSpeed(speed: Float) {
         playbackSpeed = speed
+        callbacks.playbackOptions.setSpeedFor(videoAuthorSlug, speed)
         player?.setPlaybackSpeed(speed)
     }
 
@@ -807,6 +811,8 @@ internal class PlayerSessionController(
 internal fun PlayerScreenView(
     controller: PlayerSessionController,
     options: PlaybackOptions,
+    inPictureInPicture: Boolean = false,
+    onPlayNext: (() -> Unit)? = null,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -821,6 +827,8 @@ internal fun PlayerScreenView(
     var seekError by remember { mutableStateOf<String?>(null) }
     var transientFeedback by remember { mutableStateOf<String?>(null) }
     var feedbackNonce by remember { mutableIntStateOf(0) }
+    var accumulatedSeekSec by remember { mutableIntStateOf(0) }
+    var containerWidthPx by remember { mutableIntStateOf(1) }
 
     val rootFocus = remember { FocusRequester() }
     val playButtonFocus = remember { FocusRequester() }
@@ -835,6 +843,19 @@ internal fun PlayerScreenView(
         feedbackNonce++
     }
 
+    fun stepSeek(deltaSec: Int) {
+        controller.seekBy(deltaSec * 1000L)
+        accumulatedSeekSec = if (
+            (accumulatedSeekSec > 0 && deltaSec > 0) || (accumulatedSeekSec < 0 && deltaSec < 0)
+        ) {
+            accumulatedSeekSec + deltaSec
+        } else {
+            deltaSec
+        }
+        val sign = if (accumulatedSeekSec > 0) "+" else "−"
+        showFeedback("$sign${kotlin.math.abs(accumulatedSeekSec)} с")
+    }
+
     // Auto-hide HUD while playing
     LaunchedEffect(controlsVisible, interactionNonce, controller.isPlaying, menuPage, showSeekTimeDialog) {
         if (controlsVisible && controller.isPlaying && menuPage == null && !showSeekTimeDialog) {
@@ -845,8 +866,9 @@ internal fun PlayerScreenView(
 
     LaunchedEffect(feedbackNonce) {
         if (transientFeedback != null) {
-            delay(900L)
+            delay(950L)
             transientFeedback = null
+            accumulatedSeekSec = 0
         }
     }
 
@@ -914,8 +936,12 @@ internal fun PlayerScreenView(
                         }
                         KeyEvent.KEYCODE_DPAD_LEFT -> {
                             if (!controlsVisible) {
-                                controller.seekBy(-10_000L)
-                                showFeedback(resources.getString(R.string.player_seek_back_short))
+                                val step = when {
+                                    native.repeatCount >= 8 -> -30
+                                    native.repeatCount >= 3 -> -15
+                                    else -> -10
+                                }
+                                stepSeek(step)
                                 bumpControls()
                                 return@onPreviewKeyEvent true
                             }
@@ -923,8 +949,12 @@ internal fun PlayerScreenView(
                         }
                         KeyEvent.KEYCODE_DPAD_RIGHT -> {
                             if (!controlsVisible) {
-                                controller.seekBy(10_000L)
-                                showFeedback(resources.getString(R.string.player_seek_forward_short))
+                                val step = when {
+                                    native.repeatCount >= 8 -> 30
+                                    native.repeatCount >= 3 -> 15
+                                    else -> 10
+                                }
+                                stepSeek(step)
                                 bumpControls()
                                 return@onPreviewKeyEvent true
                             }
@@ -942,11 +972,23 @@ internal fun PlayerScreenView(
                 }
                 false
             }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) {
-                if (controlsVisible) controlsVisible = false else bumpControls()
+            .onSizeChanged { containerWidthPx = it.width.coerceAtLeast(1) }
+            .pointerInput(isTv, inPictureInPicture) {
+                if (isTv || inPictureInPicture) return@pointerInput
+                detectTapGestures(
+                    onTap = {
+                        if (controlsVisible) controlsVisible = false else bumpControls()
+                    },
+                    onDoubleTap = { offset ->
+                        val isLeft = offset.x < containerWidthPx * 0.45f
+                        val isRight = offset.x > containerWidthPx * 0.55f
+                        when {
+                            isLeft -> stepSeek(-10)
+                            isRight -> stepSeek(10)
+                            else -> controller.togglePlayPause()
+                        }
+                    },
+                )
             },
     ) {
         // Video surface via Media3 PlayerView without default legacy chrome
@@ -1035,7 +1077,7 @@ internal fun PlayerScreenView(
 
         // Cinema HUD Overlay
         AnimatedVisibility(
-            visible = controlsVisible,
+            visible = controlsVisible && !inPictureInPicture,
             enter = fadeIn(tween(180)),
             exit = fadeOut(tween(220)),
             modifier = Modifier.fillMaxSize(),
@@ -1154,11 +1196,23 @@ internal fun PlayerScreenView(
                             iconSize = 26.dp,
                             primary = false,
                             onClick = {
-                                controller.seekBy(10_000L)
-                                showFeedback(resources.getString(R.string.player_seek_forward_short))
+                                stepSeek(10)
                                 bumpControls()
                             },
                         )
+                        if (onPlayNext != null) {
+                            PlayerTransportButton(
+                                iconRes = R.drawable.ic_skip_next,
+                                contentDescription = stringResource(R.string.player_next_video),
+                                size = if (isTv) 50.dp else 44.dp,
+                                iconSize = 24.dp,
+                                primary = false,
+                                onClick = {
+                                    bumpControls()
+                                    onPlayNext()
+                                },
+                            )
+                        }
                     }
                 }
 

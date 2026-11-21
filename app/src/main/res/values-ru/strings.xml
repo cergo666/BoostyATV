@@ -168,7 +168,7 @@
     <string name="about_updates_latest">Установлена последняя версия.</string>
     <string name="about_updates_check_failed">Не удалось проверить обновления. Попробуйте ещё раз.</string>
     <string name="about_author_title">Автор проекта</string>
-    <string name="about_author">Sergey Molchanov  ·  @cergo666</string>
+    <string name="about_author">@cergo666</string>
     <string name="about_github">Проект на GitHub ↗</string>
     <string name="about_no_changelog">Описание изменений отсутствует.</string>
     <string name="about_update_available">Доступна версия %s</string>
@@ -217,7 +217,7 @@
     <string name="login_pair_television_failed">Телевизор не смог завершить запрос к Boosty.</string>
     <string name="login_pair_not_confirmed">Телевизор не подтвердил вход.</string>
     <string name="player_auto">Авто</string>
-    <string name="player_builtin">Встроенный плеер</string>
+    <string name="player_builtin">Встроенный</string>
     <string name="player_other">Другой плеер</string>
     <string name="update_verification_failed">Обновление не прошло проверку подписи или versionCode. Скачайте APK с GitHub.</string>
     <string name="update_in_progress_wait">Дождитесь окончания загрузки обновления.</string>
@@ -267,4 +267,25 @@
     <string name="about_support_ozon">Ozon донаты</string>
     <string name="about_support_subtitle">По СБП или любой картой</string>
     <string name="about_support_action">Поддержать →</string>
+    <string name="post_comment_write">Написать комментарий</string>
+    <string name="post_comment_reply">Ответить</string>
+    <string name="post_comment_hint">Введите комментарий…</string>
+    <string name="post_comment_send">Отправить</string>
+    <string name="post_comment_sent">Комментарий отправлен</string>
+    <string name="post_comment_failed">Не удалось отправить комментарий.</string>
+    <string name="post_watch_later_add">Смотреть позже</string>
+    <string name="post_watch_later_added">Добавлено в «Смотреть позже»</string>
+    <string name="post_watch_later_removed">Убрано из «Смотреть позже»</string>
+    <string name="post_mark_watched">Просмотрено</string>
+    <string name="post_mark_unwatched">Сбросить просмотр</string>
+    <string name="post_marked_watched">Отмечено как просмотренное</string>
+    <string name="post_marked_unwatched">Прогресс просмотра сброшен</string>
+    <string name="post_share">Поделиться</string>
+    <string name="feed_watch_later">Смотреть позже</string>
+    <string name="authors_search_hint">Поиск по каналам…</string>
+    <string name="settings_notifications_title">Уведомления о новых видео</string>
+    <string name="settings_notifications_hint">Проверка подписок каждые 30 мин</string>
+    <string name="notifications_channel_name">Новые видео</string>
+    <string name="notifications_channel_description">Уведомления о выходе новых видео у ваших авторов</string>
+    <string name="player_next_video">Следующее видео</string>
 </resources>

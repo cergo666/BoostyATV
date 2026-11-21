@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
     internal lateinit var api: BoostyApi
     internal lateinit var watchHistory: WatchHistory
     internal lateinit var playbackOptions: PlaybackOptions
+    internal lateinit var savedPostsStore: SavedPostsStore
     internal lateinit var artwork: Artwork
     internal lateinit var updates: UpdateController
     internal lateinit var playerController: PlayerSessionController
@@ -80,6 +81,10 @@ class MainActivity : ComponentActivity() {
     private var authorsState by mutableStateOf<AuthorsState?>(null)
 
     private var oledEnabled by mutableStateOf(false)
+    private var notificationsEnabled by mutableStateOf(false)
+    private var inPictureInPicture by mutableStateOf(false)
+    private var savedPosts by mutableStateOf<List<SavedPostsStore.Item>>(emptyList())
+    private var activeVideoPost by mutableStateOf<Post?>(null)
     private var busy by mutableStateOf(false)
     private var progressRevision by mutableIntStateOf(0)
     private var profile by mutableStateOf<BoostyApi.Profile?>(null)
@@ -89,6 +94,16 @@ class MainActivity : ComponentActivity() {
     private var showLogoutDialog by mutableStateOf(false)
     private var focusedCoverUrl by mutableStateOf("")
     private var updateUiState by mutableStateOf(UpdateController.UiState(false, false, -1, "", null))
+
+    private val requestNotificationPerm = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            playbackOptions.setNotificationsEnabled(true)
+            notificationsEnabled = true
+            NewPostNotifier.syncSchedule(this, true)
+        }
+    }
 
     private val scanTv = registerForActivityResult(ScanContract()) { result ->
         val raw = result.contents ?: return@registerForActivityResult
@@ -199,6 +214,20 @@ class MainActivity : ComponentActivity() {
                 failed = { onError() },
             )
         }
+
+        override fun addComment(
+            post: Post,
+            replyToIntId: Long,
+            text: String,
+            onSuccess: (BoostyApi.Comment) -> Unit,
+            onError: () -> Unit,
+        ) {
+            readInBackground(
+                request = { api.addComment(post, replyToIntId, text) },
+                done = onSuccess,
+                failed = { onError() },
+            )
+        }
     }
 
     private val loginBackend = object : LoginBackend {
@@ -281,7 +310,13 @@ class MainActivity : ComponentActivity() {
         watchHistory = WatchHistory(this)
         watchHistory.listen(progressChanged)
         playbackOptions = PlaybackOptions(this)
+        savedPostsStore = SavedPostsStore(this)
+        savedPosts = savedPostsStore.list()
         oledEnabled = playbackOptions.oled()
+        notificationsEnabled = playbackOptions.notificationsEnabled()
+        if (!tvMode && notificationsEnabled) {
+            NewPostNotifier.syncSchedule(this, true)
+        }
         applyWindowChrome(oledEnabled)
 
         playerController = PlayerSessionController(
@@ -315,6 +350,7 @@ class MainActivity : ComponentActivity() {
                 showSettings()
             }
             playerController.restoreState(savedInstanceState)
+            handleNotificationIntent(intent)
         } else {
             currentRoute = AppRoute.Login
             updateBackEnabled()
@@ -352,9 +388,21 @@ class MainActivity : ComponentActivity() {
 
         Box(modifier = Modifier.fillMaxSize()) {
             if (playerController.active) {
+                val nextVideoPost = remember(activeVideoPost, currentFeed?.visible?.size) {
+                    findNextVideoPost(activeVideoPost)
+                }
                 PlayerScreenView(
                     controller = playerController,
                     options = playbackOptions,
+                    inPictureInPicture = inPictureInPicture,
+                    onPlayNext = nextVideoPost?.let { nextPost ->
+                        {
+                            val nextBlock = nextPost.blocks().firstOrNull { it.sources().isNotEmpty() }
+                            if (nextBlock != null) {
+                                openPlayer(nextPost, nextBlock, false)
+                            }
+                        }
+                    },
                     onBack = ::back,
                 )
             } else {
@@ -432,13 +480,25 @@ class MainActivity : ComponentActivity() {
                                     state = feed,
                                     watchHistory = watchHistory,
                                     progressRevision = progressRevision,
+                                    savedPosts = savedPosts,
                                     onBack = ::back,
                                     onOpenPost = ::showPost,
                                     onOpenRecentPost = ::openRecentPost,
+                                    onOpenSavedPost = { saved ->
+                                        openRecentPost(
+                                            WatchHistory.RecentPost(
+                                                saved.slug,
+                                                saved.id,
+                                                saved.title,
+                                                saved.author,
+                                                saved.cover,
+                                                saved.videoId,
+                                                saved.durationMs,
+                                            )
+                                        )
+                                    },
+                                    onOpenHistory = { navigateTo(AppRoute.History, push = true) },
                                     onScanQr = ::scanTvCode,
-                                    onOpenSettings = { selectTab(AppTab.SETTINGS) },
-                                    onOpenAbout = ::showAbout,
-                                    onRequestLogout = { showLogoutDialog = true },
                                     authorsState = ensureAuthorsState(),
                                     onOpenAuthor = { slug, name -> showFeed(slug, name, push = true) },
                                     onFocusArtwork = { url -> focusedCoverUrl = url },
@@ -452,10 +512,8 @@ class MainActivity : ComponentActivity() {
                                 onBack = ::back,
                                 onOpenPost = ::showPost,
                                 onOpenRecentPost = ::openRecentPost,
+                                onOpenHistory = { navigateTo(AppRoute.History, push = true) },
                                 onScanQr = ::scanTvCode,
-                                onOpenSettings = { selectTab(AppTab.SETTINGS) },
-                                onOpenAbout = ::showAbout,
-                                onRequestLogout = { showLogoutDialog = true },
                                 onFocusArtwork = { url -> focusedCoverUrl = url },
                             )
 
@@ -471,18 +529,21 @@ class MainActivity : ComponentActivity() {
                                 watchHistory = watchHistory,
                                 progressRevision = progressRevision,
                                 errorText = historyError,
+                                onBack = ::back,
                                 onOpenRecent = ::openRecentPost,
                             )
 
                             AppRoute.Settings -> SettingsScreenView(
                                 options = playbackOptions,
                                 oledEnabled = oledEnabled,
+                                notificationsEnabled = notificationsEnabled,
                                 updating = updateUiState.updating(),
                                 onToggleOled = { enabled ->
                                     playbackOptions.setOled(enabled)
                                     oledEnabled = enabled
                                     applyWindowChrome(enabled)
                                 },
+                                onToggleNotifications = ::toggleNotifications,
                                 onScanTvCode = ::scanTvCode,
                                 onOpenAbout = ::showAbout,
                                 onCheckUpdates = { updates.checkInteractive() },
@@ -507,6 +568,29 @@ class MainActivity : ComponentActivity() {
                                 backend = postBackend,
                                 watchHistory = watchHistory,
                                 progressRevision = progressRevision,
+                                isSaved = savedPosts.any { it.slug == route.post.slug() && it.id == route.post.id() },
+                                onToggleSave = {
+                                    val added = savedPostsStore.toggle(route.post)
+                                    savedPosts = savedPostsStore.list()
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        getString(if (added) R.string.post_watch_later_added else R.string.post_watch_later_removed),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                },
+                                onToggleWatched = { block, watched ->
+                                    val duration = watchHistory.get(block).duration().takeIf { it > 0L } ?: block.durationMs()
+                                    if (duration > 0L) {
+                                        watchHistory.save(block, if (watched) duration else 0L, duration)
+                                        progressRevision++
+                                        syncWatchProgress()
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            getString(if (watched) R.string.post_marked_watched else R.string.post_marked_unwatched),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                                },
                                 onBack = ::back,
                                 onOpenPlayer = ::openPlayer,
                                 onOpenTag = ::showTag,
@@ -676,7 +760,74 @@ class MainActivity : ComponentActivity() {
         backCallback.isEnabled = playerController.hasVideo() || backStack.isNotEmpty()
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (api.hasSession()) handleNotificationIntent(intent)
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (!tvMode && playerController.active && playerController.isPlaying &&
+            packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)
+        ) {
+            runCatching {
+                val params = android.app.PictureInPictureParams.Builder()
+                    .setAspectRatio(android.util.Rational(16, 9))
+                    .build()
+                enterPictureInPictureMode(params)
+            }
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inPictureInPicture = isInPictureInPictureMode
+    }
+
+    private fun handleNotificationIntent(intent: android.content.Intent?) {
+        val slug = intent?.getStringExtra(NewPostNotifier.EXTRA_POST_SLUG).orEmpty()
+        val id = intent?.getStringExtra(NewPostNotifier.EXTRA_POST_ID).orEmpty()
+        if (slug.isEmpty() || id.isEmpty()) return
+        intent?.removeExtra(NewPostNotifier.EXTRA_POST_SLUG)
+        intent?.removeExtra(NewPostNotifier.EXTRA_POST_ID)
+        openRecentPost(WatchHistory.RecentPost(slug, id, "", ""))
+    }
+
+    private fun toggleNotifications(enabled: Boolean) {
+        if (!enabled) {
+            playbackOptions.setNotificationsEnabled(false)
+            notificationsEnabled = false
+            NewPostNotifier.syncSchedule(this, false)
+            return
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.POST_NOTIFICATIONS,
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotificationPerm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        playbackOptions.setNotificationsEnabled(true)
+        notificationsEnabled = true
+        NewPostNotifier.syncSchedule(this, true)
+    }
+
+    private fun findNextVideoPost(current: Post?): Post? {
+        if (current == null) return null
+        val list = (currentFeed ?: lastFeed)?.visible ?: return null
+        val index = list.indexOfFirst { it.id() == current.id() }
+        if (index < 0) return null
+        for (i in (index + 1) until list.size) {
+            if (list[i].hasVideo() && list[i].allowed()) return list[i]
+        }
+        return null
+    }
+
     private fun openPlayer(post: Post, block: Post.Block, fromStart: Boolean) {
+        activeVideoPost = post
         watchHistory.remember(post)
         progressRevision++
         playerController.open(post, block, fromStart)

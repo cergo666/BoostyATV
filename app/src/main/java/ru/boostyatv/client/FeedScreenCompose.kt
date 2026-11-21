@@ -310,13 +310,13 @@ internal fun FeedScreenView(
     state: FeedState,
     watchHistory: WatchHistory,
     progressRevision: Int,
+    savedPosts: List<SavedPostsStore.Item> = emptyList(),
     onBack: () -> Unit,
     onOpenPost: (Post) -> Unit,
     onOpenRecentPost: (WatchHistory.RecentPost) -> Unit,
+    onOpenSavedPost: (SavedPostsStore.Item) -> Unit = {},
+    onOpenHistory: () -> Unit = {},
     onScanQr: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenAbout: () -> Unit,
-    onRequestLogout: () -> Unit,
     authorsState: AuthorsState? = null,
     onOpenAuthor: (slug: String, name: String) -> Unit = { _, _ -> },
     onFocusArtwork: (String) -> Unit = {},
@@ -329,7 +329,15 @@ internal fun FeedScreenView(
     var showSearchDialog by remember { mutableStateOf(false) }
     var showTagsSheet by remember { mutableStateOf(false) }
     var showNoTagsNotice by remember { mutableStateOf(false) }
-    var showAccountMenu by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isHome, state.visible.firstOrNull()?.id()) {
+        if (isHome) {
+            val firstVideo = state.visible.firstOrNull { it.hasVideo() }
+            if (firstVideo != null) {
+                NewPostNotifier.markLatestSeen(context, firstVideo.id())
+            }
+        }
+    }
 
     LaunchedEffect(isHome, authorsState) {
         if (isHome && authorsState != null) {
@@ -394,21 +402,22 @@ internal fun FeedScreenView(
             onBack = onBack,
             actions = {
                 if (isHome) {
-                    BoostyIconButton(
-                        iconRes = R.drawable.ic_refresh,
-                        contentDescription = stringResource(R.string.account_refresh_feed),
-                        onClick = { state.reload(userPull = false) },
-                    )
-                    if (!isTv) {
+                    if (isTv) {
+                        BoostyIconButton(
+                            iconRes = R.drawable.ic_refresh,
+                            contentDescription = stringResource(R.string.account_refresh_feed),
+                            onClick = { state.reload(userPull = false) },
+                        )
+                    } else {
+                        BoostyIconButton(
+                            iconRes = R.drawable.ic_history,
+                            contentDescription = stringResource(R.string.nav_history),
+                            onClick = onOpenHistory,
+                        )
                         BoostyIconButton(
                             iconRes = R.drawable.ic_qr,
                             contentDescription = stringResource(R.string.feed_qr_description),
                             onClick = onScanQr,
-                        )
-                        BoostyIconButton(
-                            iconRes = R.drawable.ic_more,
-                            contentDescription = stringResource(R.string.feed_menu),
-                            onClick = { showAccountMenu = true },
                         )
                     }
                 }
@@ -532,6 +541,17 @@ internal fun FeedScreenView(
                                 items = continueWatching,
                                 watchHistory = watchHistory,
                                 onOpenRecent = onOpenRecentPost,
+                                onFocusArtwork = onFocusArtwork,
+                            )
+                        }
+                    }
+
+                    if (isHome && state.unfiltered() && savedPosts.isNotEmpty()) {
+                        item(key = "watch_later", contentType = "watch_later", span = { GridItemSpan(maxLineSpan) }) {
+                            WatchLaterShelf(
+                                items = savedPosts,
+                                watchHistory = watchHistory,
+                                onOpenSaved = onOpenSavedPost,
                                 onFocusArtwork = onFocusArtwork,
                             )
                         }
@@ -679,45 +699,48 @@ internal fun FeedScreenView(
             onDismiss = { showNoTagsNotice = false },
         )
     }
+}
 
-    if (showAccountMenu) {
-        BoostyOverlaySheet(
-            title = stringResource(R.string.feed_menu),
-            onDismiss = { showAccountMenu = false },
+@Composable
+private fun WatchLaterShelf(
+    items: List<SavedPostsStore.Item>,
+    watchHistory: WatchHistory,
+    onOpenSaved: (SavedPostsStore.Item) -> Unit,
+    onFocusArtwork: (String) -> Unit,
+) {
+    val palette = BoostyTheme.palette
+    val isTv = BoostyTheme.isTv
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.feed_watch_later),
+            style = MaterialTheme.typography.titleLarge,
+            color = palette.ink,
+        )
+        LazyRow(
+            contentPadding = PaddingValues(
+                horizontal = if (isTv) 10.dp else 2.dp,
+                vertical = if (isTv) 12.dp else 4.dp,
+            ),
+            horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
         ) {
-            BoostySheetOption(
-                label = stringResource(R.string.account_refresh_feed),
-                iconRes = R.drawable.ic_refresh,
-                onClick = {
-                    showAccountMenu = false
-                    state.reload(userPull = false)
-                },
-            )
-            BoostySheetOption(
-                label = stringResource(R.string.account_settings),
-                iconRes = R.drawable.ic_settings,
-                onClick = {
-                    showAccountMenu = false
-                    onOpenSettings()
-                },
-            )
-            BoostySheetOption(
-                label = stringResource(R.string.account_about),
-                iconRes = R.drawable.ic_info,
-                onClick = {
-                    showAccountMenu = false
-                    onOpenAbout()
-                },
-            )
-            BoostySheetOption(
-                label = stringResource(R.string.account_logout),
-                iconRes = R.drawable.ic_logout,
-                danger = true,
-                onClick = {
-                    showAccountMenu = false
-                    onRequestLogout()
-                },
-            )
+            items(items, key = { "saved_${it.slug}_${it.id}" }, contentType = { "watch_later_card" }) { saved ->
+                val progress = watchHistory.progressForVideo(saved.videoId, saved.durationMs)
+                CompactVideoCard(
+                    title = saved.title.ifEmpty { stringResource(R.string.post_untitled) },
+                    author = saved.author.ifEmpty { saved.slug },
+                    coverUrl = saved.cover,
+                    durationMs = progress.duration().takeIf { it > 0L } ?: saved.durationMs,
+                    progressPercent = progress.percentage(),
+                    onClick = { onOpenSaved(saved) },
+                    modifier = Modifier.width(if (isTv) 268.dp else 224.dp),
+                    onFocusArtwork = onFocusArtwork,
+                )
+            }
         }
     }
 }

@@ -111,6 +111,31 @@ final class PlaybackOptions {
         preferences.edit().putBoolean("oled_theme", enabled).apply();
     }
 
+    boolean notificationsEnabled() {
+        return preferences.getBoolean("new_video_notifications", false);
+    }
+
+    void setNotificationsEnabled(boolean enabled) {
+        preferences.edit().putBoolean("new_video_notifications", enabled).apply();
+    }
+
+    float speedFor(String authorSlug) {
+        if (authorSlug != null && !authorSlug.isEmpty()) {
+            float perAuthor = preferences.getFloat("speed_author_" + authorSlug, -1f);
+            if (perAuthor >= 0.25f && perAuthor <= 4f) return perAuthor;
+        }
+        float global = preferences.getFloat("speed_default", 1f);
+        return global >= 0.25f && global <= 4f ? global : 1f;
+    }
+
+    void setSpeedFor(String authorSlug, float speed) {
+        SharedPreferences.Editor editor = preferences.edit().putFloat("speed_default", speed);
+        if (authorSlug != null && !authorSlug.isEmpty()) {
+            editor.putFloat("speed_author_" + authorSlug, speed);
+        }
+        editor.apply();
+    }
+
     int qualityIndex() {
         int index = preferences.getInt("quality", 0);
         return index >= 0 && index < HEIGHTS.length ? index : 0;

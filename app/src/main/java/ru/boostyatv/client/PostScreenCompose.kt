@@ -83,6 +83,14 @@ internal interface PostBackend {
         onSuccess: () -> Unit,
         onError: () -> Unit,
     )
+
+    fun addComment(
+        post: Post,
+        replyToIntId: Long,
+        text: String,
+        onSuccess: (BoostyApi.Comment) -> Unit,
+        onError: () -> Unit,
+    )
 }
 
 private data class ReactionPickerRequest(
@@ -105,6 +113,9 @@ internal fun PostScreenView(
     backend: PostBackend,
     watchHistory: WatchHistory,
     progressRevision: Int,
+    isSaved: Boolean = false,
+    onToggleSave: () -> Unit = {},
+    onToggleWatched: (Post.Block, Boolean) -> Unit = { _, _ -> },
     onBack: () -> Unit,
     onOpenPlayer: (Post, Post.Block, Boolean) -> Unit,
     onOpenTag: (Post, BoostyApi.Tag) -> Unit,
@@ -119,6 +130,8 @@ internal fun PostScreenView(
     val localReactions = remember(post.id()) { mutableStateMapOf<String, Reactions>() }
     val pendingReactions = remember(post.id()) { mutableStateMapOf<String, Boolean>() }
     var reactionPicker by remember(post.id()) { mutableStateOf<ReactionPickerRequest?>(null) }
+    var commentComposerParent by remember(post.id()) { mutableStateOf<Long?>(null) }
+    var sendingComment by remember(post.id()) { mutableStateOf(false) }
 
     var rootComments by remember(post.id()) { mutableStateOf(CommentsFeed()) }
     val replyThreads = remember(post.id()) { mutableStateMapOf<Long, CommentsFeed>() }
@@ -261,7 +274,13 @@ internal fun PostScreenView(
                         modifier = (if (hasComments) Modifier.fillMaxSize() else Modifier.widthIn(max = 820.dp).fillMaxHeight())
                             .verticalScroll(rememberScrollState()),
                     ) {
-                        PostHeaderRow(post = post, showBack = true, onBack = onBack)
+                        PostHeaderRow(
+                            post = post,
+                            showBack = true,
+                            isSaved = isSaved,
+                            onToggleSave = onToggleSave,
+                            onBack = onBack,
+                        )
                         Spacer(Modifier.height(14.dp))
                         PostArticleContent(
                             post = post,
@@ -273,6 +292,7 @@ internal fun PostScreenView(
                             pendingReactions = pendingReactions,
                             onOpenPlayer = onOpenPlayer,
                             onOpenTag = onOpenTag,
+                            onToggleWatched = onToggleWatched,
                             onOpenReactionPicker = ::requestReactionPicker,
                         )
                         Spacer(Modifier.height(24.dp))
@@ -289,11 +309,24 @@ internal fun PostScreenView(
                             .border(1.dp, palette.hairline, SheetShape)
                             .padding(18.dp),
                     ) {
-                        Text(
-                            text = stringResource(R.string.post_comments),
-                            style = MaterialTheme.typography.titleLarge,
-                            color = palette.ink,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.post_comments),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = palette.ink,
+                            )
+                            BoostyIconButton(
+                                iconRes = R.drawable.ic_send,
+                                contentDescription = stringResource(R.string.post_comment_write),
+                                onClick = { commentComposerParent = 0L },
+                                size = 38.dp,
+                                iconSize = 18.dp,
+                            )
+                        }
                         Spacer(Modifier.height(12.dp))
                         LazyColumn(
                             modifier = Modifier.weight(1f),
@@ -330,6 +363,7 @@ internal fun PostScreenView(
                                         },
                                         onLoadMoreReplies = { nextOffset -> fetchComments(comment.id(), nextOffset) },
                                         onRetryReplies = { fetchComments(comment.id(), "") },
+                                        onReply = { commentComposerParent = comment.id() },
                                         onOpenReactionPicker = ::requestReactionPicker,
                                     )
                                 }
@@ -389,7 +423,13 @@ internal fun PostScreenView(
                 ) {
                     item(key = "post_article") {
                         Column {
-                            PostHeaderRow(post = post, showBack = false, onBack = onBack)
+                            PostHeaderRow(
+                                post = post,
+                                showBack = false,
+                                isSaved = isSaved,
+                                onToggleSave = onToggleSave,
+                                onBack = onBack,
+                            )
                             Spacer(Modifier.height(14.dp))
                             PostArticleContent(
                                 post = post,
@@ -401,6 +441,7 @@ internal fun PostScreenView(
                                 pendingReactions = pendingReactions,
                                 onOpenPlayer = onOpenPlayer,
                                 onOpenTag = onOpenTag,
+                                onToggleWatched = onToggleWatched,
                                 onOpenReactionPicker = ::requestReactionPicker,
                             )
                         }
@@ -408,12 +449,26 @@ internal fun PostScreenView(
 
                     if (hasComments) {
                         item(key = "comments_header") {
-                            Text(
-                                text = stringResource(R.string.post_comments),
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = palette.ink,
-                                modifier = Modifier.padding(top = 12.dp),
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.post_comments),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = palette.ink,
+                                )
+                                BoostyButton(
+                                    text = stringResource(R.string.post_comment_write),
+                                    iconRes = R.drawable.ic_send,
+                                    primary = false,
+                                    enabled = !sendingComment,
+                                    onClick = { commentComposerParent = 0L },
+                                )
+                            }
                         }
                         if (rootComments.loading && rootComments.items.isEmpty()) {
                             items(3) { CommentSkeleton() }
@@ -445,6 +500,7 @@ internal fun PostScreenView(
                                     },
                                     onLoadMoreReplies = { nextOffset -> fetchComments(comment.id(), nextOffset) },
                                     onRetryReplies = { fetchComments(comment.id(), "") },
+                                    onReply = { commentComposerParent = comment.id() },
                                     onOpenReactionPicker = ::requestReactionPicker,
                                 )
                             }
@@ -478,6 +534,48 @@ internal fun PostScreenView(
                 }
             }
         }
+    }
+
+    commentComposerParent?.let { parentId ->
+        BoostyTextInputDialog(
+            title = stringResource(if (parentId > 0L) R.string.post_comment_reply else R.string.post_comment_write),
+            initialValue = "",
+            placeholder = stringResource(R.string.post_comment_hint),
+            confirmLabel = stringResource(R.string.post_comment_send),
+            onConfirm = { raw ->
+                val text = raw.trim()
+                if (text.isEmpty()) return@BoostyTextInputDialog
+                commentComposerParent = null
+                sendingComment = true
+                backend.addComment(
+                    post = post,
+                    replyToIntId = parentId,
+                    text = text,
+                    onSuccess = { created ->
+                        sendingComment = false
+                        if (parentId == 0L) {
+                            rootComments = rootComments.copy(
+                                items = listOf(created) + rootComments.items,
+                                loadedOnce = true,
+                            )
+                        } else {
+                            expandedReplies[parentId] = true
+                            val existing = replyThreads[parentId] ?: CommentsFeed()
+                            replyThreads[parentId] = existing.copy(
+                                items = existing.items + created,
+                                loadedOnce = true,
+                            )
+                        }
+                        Toast.makeText(context, resources.getString(R.string.post_comment_sent), Toast.LENGTH_SHORT).show()
+                    },
+                    onError = {
+                        sendingComment = false
+                        Toast.makeText(context, resources.getString(R.string.post_comment_failed), Toast.LENGTH_LONG).show()
+                    },
+                )
+            },
+            onDismiss = { commentComposerParent = null },
+        )
     }
 
     reactionPicker?.let { request ->
@@ -552,16 +650,17 @@ internal fun PostScreenView(
 private fun PostHeaderRow(
     post: Post,
     showBack: Boolean,
+    isSaved: Boolean,
+    onToggleSave: () -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val resources = LocalResources.current
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
     Column {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (showBack) {
                 BoostyIconButton(
@@ -577,6 +676,29 @@ private fun PostHeaderRow(
                 color = palette.ink,
                 modifier = Modifier.weight(1f),
             )
+            if (post.slug().isNotEmpty() && post.id().isNotEmpty()) {
+                BoostyIconButton(
+                    iconRes = if (isSaved) R.drawable.ic_bookmark_filled else R.drawable.ic_bookmark,
+                    contentDescription = stringResource(R.string.post_watch_later_add),
+                    onClick = onToggleSave,
+                    containerColor = if (isSaved) palette.accentSoft else palette.surfaceElevated.copy(alpha = 0.8f),
+                )
+                if (!isTv) {
+                    BoostyIconButton(
+                        iconRes = R.drawable.ic_share,
+                        contentDescription = stringResource(R.string.post_share),
+                        onClick = {
+                            val url = "${BoostyApi.ORIGIN}/${post.slug()}/posts/${post.id()}"
+                            val share = android.content.Intent(android.content.Intent.ACTION_SEND)
+                                .setType("text/plain")
+                                .putExtra(android.content.Intent.EXTRA_SUBJECT, post.displayTitle(context))
+                                .putExtra(android.content.Intent.EXTRA_TEXT, url)
+                            context.startActivity(android.content.Intent.createChooser(share, null))
+                        },
+                        containerColor = palette.surfaceElevated.copy(alpha = 0.8f),
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(10.dp))
         Row(
@@ -612,6 +734,7 @@ private fun PostArticleContent(
     pendingReactions: Map<String, Boolean>,
     onOpenPlayer: (Post, Post.Block, Boolean) -> Unit,
     onOpenTag: (Post, BoostyApi.Tag) -> Unit,
+    onToggleWatched: (Post.Block, Boolean) -> Unit,
     onOpenReactionPicker: (String, Reactions) -> Unit,
 ) {
     val palette = BoostyTheme.palette
@@ -646,6 +769,7 @@ private fun PostArticleContent(
                 priority = true,
                 playFocusRequester = primaryPlayFocus,
                 onOpenPlayer = onOpenPlayer,
+                onToggleWatched = onToggleWatched,
             )
         }
 
@@ -695,6 +819,7 @@ private fun PostArticleContent(
                         priority = usePrimaryFocus,
                         playFocusRequester = if (usePrimaryFocus) primaryPlayFocus else null,
                         onOpenPlayer = onOpenPlayer,
+                        onToggleWatched = onToggleWatched,
                     )
                 }
             }
@@ -719,6 +844,7 @@ private fun VideoBlockCard(
     priority: Boolean,
     playFocusRequester: FocusRequester?,
     onOpenPlayer: (Post, Post.Block, Boolean) -> Unit,
+    onToggleWatched: (Post.Block, Boolean) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -875,6 +1001,17 @@ private fun VideoBlockCard(
                 }
             }
 
+            val isWatched = progress.percentage() >= 95
+            if (block.videoId().isNotEmpty() && (progress.duration() > 0L || block.durationMs() > 0L)) {
+                BoostyButton(
+                    text = stringResource(if (isWatched) R.string.post_mark_unwatched else R.string.post_mark_watched),
+                    iconRes = R.drawable.ic_check_circle,
+                    primary = false,
+                    onClick = { onToggleWatched(block, !isWatched) },
+                    modifier = if (isTv) Modifier else Modifier.fillMaxWidth(),
+                )
+            }
+
             if (showDownloadSheet) {
                 BoostyOverlaySheet(
                     title = stringResource(R.string.post_download_title),
@@ -958,6 +1095,7 @@ private fun CommentCard(
     onToggleReplies: () -> Unit,
     onLoadMoreReplies: (String) -> Unit,
     onRetryReplies: () -> Unit,
+    onReply: (() -> Unit)? = null,
     onOpenReactionPicker: (String, Reactions) -> Unit,
 ) {
     val context = LocalContext.current
@@ -988,7 +1126,7 @@ private fun CommentCard(
     }
 
     val hasInteractiveChildren = (!post.reactionsDisabled() && comment.reactionId().isNotEmpty()) ||
-        (showReplies && comment.id() > 0L && comment.replyCount() > 0)
+        (showReplies && comment.id() > 0L && (comment.replyCount() > 0 || onReply != null))
 
     Column(
         modifier = Modifier
@@ -1049,16 +1187,27 @@ private fun CommentCard(
             )
         }
 
-        if (showReplies && comment.id() > 0L && comment.replyCount() > 0) {
-            BoostyButton(
-                text = if (expanded) {
-                    stringResource(R.string.post_collapse_replies)
-                } else {
-                    stringResource(R.string.post_replies, comment.replyCount())
-                },
-                primary = false,
-                onClick = onToggleReplies,
-            )
+        if (showReplies && comment.id() > 0L && (comment.replyCount() > 0 || onReply != null)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (comment.replyCount() > 0) {
+                    BoostyButton(
+                        text = if (expanded) {
+                            stringResource(R.string.post_collapse_replies)
+                        } else {
+                            stringResource(R.string.post_replies, comment.replyCount())
+                        },
+                        primary = false,
+                        onClick = onToggleReplies,
+                    )
+                }
+                if (onReply != null && !post.commentsDenied()) {
+                    BoostyButton(
+                        text = stringResource(R.string.post_comment_reply),
+                        primary = false,
+                        onClick = onReply,
+                    )
+                }
+            }
             if (expanded) {
                 Column(
                     modifier = Modifier.padding(start = 12.dp),

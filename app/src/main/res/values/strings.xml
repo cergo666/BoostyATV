@@ -168,7 +168,7 @@
     <string name="about_updates_latest">Latest version installed.</string>
     <string name="about_updates_check_failed">Failed to check for updates. Try again.</string>
     <string name="about_author_title">Project author</string>
-    <string name="about_author">Sergey Molchanov · @cergo666</string>
+    <string name="about_author">@cergo666</string>
     <string name="about_github">Project on GitHub ↗</string>
     <string name="about_no_changelog">No changelog available.</string>
     <string name="about_update_available">Version %s available</string>
@@ -217,7 +217,7 @@
     <string name="login_pair_television_failed">The TV could not complete the request to Boosty.</string>
     <string name="login_pair_not_confirmed">The TV did not confirm the sign-in.</string>
     <string name="player_auto">Auto</string>
-    <string name="player_builtin">Built-in player</string>
+    <string name="player_builtin">Built-in</string>
     <string name="player_other">Other player</string>
     <string name="update_verification_failed">The update failed the signature or versionCode check. Download the APK from GitHub.</string>
     <string name="update_in_progress_wait">Wait for the update download to finish.</string>
@@ -267,4 +267,25 @@
     <string name="about_support_ozon">Ozon donations</string>
     <string name="about_support_subtitle">Via SBP or any bank card</string>
     <string name="about_support_action">Support →</string>
+    <string name="post_comment_write">Write a comment</string>
+    <string name="post_comment_reply">Reply</string>
+    <string name="post_comment_hint">Enter your comment…</string>
+    <string name="post_comment_send">Send</string>
+    <string name="post_comment_sent">Comment published</string>
+    <string name="post_comment_failed">Failed to publish comment.</string>
+    <string name="post_watch_later_add">Watch later</string>
+    <string name="post_watch_later_added">Saved to Watch later</string>
+    <string name="post_watch_later_removed">Removed from Watch later</string>
+    <string name="post_mark_watched">Mark watched</string>
+    <string name="post_mark_unwatched">Mark unwatched</string>
+    <string name="post_marked_watched">Marked as watched</string>
+    <string name="post_marked_unwatched">Progress reset</string>
+    <string name="post_share">Share</string>
+    <string name="feed_watch_later">Watch later</string>
+    <string name="authors_search_hint">Search channels…</string>
+    <string name="settings_notifications_title">New video notifications</string>
+    <string name="settings_notifications_hint">Check subscriptions every 30 min</string>
+    <string name="notifications_channel_name">New videos</string>
+    <string name="notifications_channel_description">Alerts when followed creators publish new videos</string>
+    <string name="player_next_video">Next video</string>
 </resources>

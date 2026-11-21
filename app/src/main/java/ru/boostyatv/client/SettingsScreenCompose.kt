@@ -30,8 +30,10 @@ import androidx.compose.ui.unit.dp
 internal fun SettingsScreenView(
     options: PlaybackOptions,
     oledEnabled: Boolean,
+    notificationsEnabled: Boolean,
     updating: Boolean,
     onToggleOled: (Boolean) -> Unit,
+    onToggleNotifications: (Boolean) -> Unit,
     onScanTvCode: () -> Unit,
     onOpenAbout: () -> Unit,
     onCheckUpdates: () -> Unit,
@@ -125,6 +127,16 @@ internal fun SettingsScreenView(
                 }
 
                 BoostySettingsSection(stringResource(R.string.settings_section_app))
+
+                if (!isTv) {
+                    BoostySettingsRow(
+                        iconRes = R.drawable.ic_notifications,
+                        title = stringResource(R.string.settings_notifications_title),
+                        subtitle = stringResource(R.string.settings_notifications_hint),
+                        onClick = { onToggleNotifications(!notificationsEnabled) },
+                        trailing = { BoostySwitch(checked = notificationsEnabled) },
+                    )
+                }
 
                 BoostySettingsRow(
                     iconRes = R.drawable.ic_info,

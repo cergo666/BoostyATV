@@ -127,6 +127,16 @@ internal fun AuthorsScreenView(
 ) {
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
+    var searchQuery by remember { mutableStateOf("") }
+    var showSearchDialog by remember { mutableStateOf(false) }
+
+    val filteredItems = remember(state.items.size, searchQuery) {
+        val q = searchQuery.trim()
+        if (q.isEmpty()) state.items.toList()
+        else state.items.filter {
+            it.name().contains(q, ignoreCase = true) || it.slug().contains(q, ignoreCase = true)
+        }
+    }
 
     LaunchedEffect(state) {
         state.ensureLoaded()
@@ -137,12 +147,20 @@ internal fun AuthorsScreenView(
             title = stringResource(if (isTv) R.string.nav_channels else R.string.feed_subscriptions),
             showBack = false,
             onBack = {},
+            subtitle = if (searchQuery.isNotBlank()) stringResource(R.string.feed_filter_search, searchQuery) else null,
             actions = {
                 BoostyIconButton(
-                    iconRes = R.drawable.ic_refresh,
-                    contentDescription = stringResource(R.string.account_refresh_feed),
-                    onClick = { state.reload() },
+                    iconRes = R.drawable.ic_search,
+                    contentDescription = stringResource(R.string.feed_channel_search),
+                    onClick = { showSearchDialog = true },
                 )
+                if (isTv) {
+                    BoostyIconButton(
+                        iconRes = R.drawable.ic_refresh,
+                        contentDescription = stringResource(R.string.account_refresh_feed),
+                        onClick = { state.reload() },
+                    )
+                }
             },
         )
 
@@ -201,7 +219,7 @@ internal fun AuthorsScreenView(
                     items(count = if (isTv) columns * 2 else 6, key = { "author_skel_$it" }) {
                         AuthorSkeleton(isTv = isTv)
                     }
-                } else if (state.items.isEmpty() && state.errorMessage == null) {
+                } else if (filteredItems.isEmpty() && state.errorMessage == null) {
                     item(key = "authors_empty", span = { GridItemSpan(maxLineSpan) }) {
                         Box(
                             modifier = Modifier
@@ -218,8 +236,9 @@ internal fun AuthorsScreenView(
                     }
                 } else {
                     items(
-                        items = state.items,
+                        items = filteredItems,
                         key = { it.slug() },
+                        contentType = { "author" },
                     ) { author ->
                         if (isTv) {
                             TvChannelCard(
@@ -235,7 +254,7 @@ internal fun AuthorsScreenView(
                     }
                 }
 
-                if (state.hasMore) {
+                if (state.hasMore && searchQuery.isBlank()) {
                     item(key = "authors_more", span = { GridItemSpan(maxLineSpan) }) {
                         Box(
                             modifier = Modifier
@@ -258,6 +277,24 @@ internal fun AuthorsScreenView(
                 }
             }
         }
+    }
+
+    if (showSearchDialog) {
+        BoostyTextInputDialog(
+            title = stringResource(R.string.feed_channel_search),
+            initialValue = searchQuery,
+            placeholder = stringResource(R.string.authors_search_hint),
+            confirmLabel = stringResource(R.string.feed_search_dialog_find),
+            onConfirm = { query ->
+                searchQuery = query.trim()
+                showSearchDialog = false
+            },
+            onReset = {
+                searchQuery = ""
+                showSearchDialog = false
+            },
+            onDismiss = { showSearchDialog = false },
+        )
     }
 }
 

@@ -33,6 +33,7 @@ internal fun HistoryScreenView(
     watchHistory: WatchHistory,
     progressRevision: Int,
     errorText: String?,
+    onBack: () -> Unit = {},
     onOpenRecent: (WatchHistory.RecentPost) -> Unit,
 ) {
     val palette = BoostyTheme.palette
@@ -42,8 +43,8 @@ internal fun HistoryScreenView(
     Column(modifier = Modifier.fillMaxSize()) {
         ScreenToolbar(
             title = stringResource(R.string.nav_history),
-            showBack = false,
-            onBack = {},
+            showBack = !isTv,
+            onBack = onBack,
         )
 
         if (!errorText.isNullOrBlank()) {
