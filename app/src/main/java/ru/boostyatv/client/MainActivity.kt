@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +47,8 @@ internal sealed interface AppRoute {
     data class ChannelFeed(val state: FeedState) : AppRoute
     data object Channels : AppRoute
     data object History : AppRoute
+    data object WatchLater : AppRoute
+    data object Downloads : AppRoute
     data object Settings : AppRoute
     data object Account : AppRoute
     data object About : AppRoute
@@ -83,6 +86,7 @@ class MainActivity : ComponentActivity() {
     private var oledEnabled by mutableStateOf(false)
     private var notificationsEnabled by mutableStateOf(false)
     private var inPictureInPicture by mutableStateOf(false)
+    private val retryingDownloads = mutableStateMapOf<Long, Unit>()
     private var savedPosts by mutableStateOf<List<SavedPostsStore.Item>>(emptyList())
     private var activeVideoPost by mutableStateOf<Post?>(null)
     private var busy by mutableStateOf(false)
@@ -101,6 +105,7 @@ class MainActivity : ComponentActivity() {
         if (granted) {
             playbackOptions.setNotificationsEnabled(true)
             notificationsEnabled = true
+            NewPostNotifier.startTracking(this)
             NewPostNotifier.syncSchedule(this, true)
         }
     }
@@ -484,20 +489,9 @@ class MainActivity : ComponentActivity() {
                                     onBack = ::back,
                                     onOpenPost = ::showPost,
                                     onOpenRecentPost = ::openRecentPost,
-                                    onOpenSavedPost = { saved ->
-                                        openRecentPost(
-                                            WatchHistory.RecentPost(
-                                                saved.slug,
-                                                saved.id,
-                                                saved.title,
-                                                saved.author,
-                                                saved.cover,
-                                                saved.videoId,
-                                                saved.durationMs,
-                                            )
-                                        )
-                                    },
+                                    onOpenSavedPost = ::openSavedPost,
                                     onOpenHistory = { navigateTo(AppRoute.History, push = true) },
+                                    onOpenWatchLater = { navigateTo(AppRoute.WatchLater, push = true) },
                                     onScanQr = ::scanTvCode,
                                     authorsState = ensureAuthorsState(),
                                     onOpenAuthor = { slug, name -> showFeed(slug, name, push = true) },
@@ -533,10 +527,28 @@ class MainActivity : ComponentActivity() {
                                 onOpenRecent = ::openRecentPost,
                             )
 
+                            AppRoute.WatchLater -> WatchLaterScreenView(
+                                items = savedPosts,
+                                watchHistory = watchHistory,
+                                onBack = ::back,
+                                onOpen = ::openSavedPost,
+                                onRemove = { item ->
+                                    savedPostsStore.remove(item.slug, item.id)
+                                    savedPosts = savedPostsStore.list()
+                                },
+                            )
+
+                            AppRoute.Downloads -> DownloadsScreenView(
+                                retrying = retryingDownloads.keys.toSet(),
+                                onBack = ::back,
+                                onRetry = ::retryDownload,
+                            )
+
                             AppRoute.Settings -> SettingsScreenView(
                                 options = playbackOptions,
                                 oledEnabled = oledEnabled,
                                 notificationsEnabled = notificationsEnabled,
+                                onOpenDownloads = { navigateTo(AppRoute.Downloads, push = true) },
                                 updating = updateUiState.updating(),
                                 onToggleOled = { enabled ->
                                     playbackOptions.setOled(enabled)
@@ -768,7 +780,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (!tvMode && playerController.active && playerController.isPlaying &&
+        if (!tvMode && playbackOptions.automaticPip() && playerController.active && playerController.isPlaying &&
             packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)
         ) {
             runCatching {
@@ -786,11 +798,20 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNotificationIntent(intent: android.content.Intent?) {
+        if (intent?.getBooleanExtra(NewPostNotifier.EXTRA_OPEN_FEED, false) == true) {
+            intent.removeExtra(NewPostNotifier.EXTRA_OPEN_FEED)
+            if (playerController.active) playerController.close()
+            backStack.clear()
+            navigateTo(AppRoute.Home, push = false)
+            homeFeed?.reload(userPull = false)
+            return
+        }
         val slug = intent?.getStringExtra(NewPostNotifier.EXTRA_POST_SLUG).orEmpty()
         val id = intent?.getStringExtra(NewPostNotifier.EXTRA_POST_ID).orEmpty()
         if (slug.isEmpty() || id.isEmpty()) return
         intent?.removeExtra(NewPostNotifier.EXTRA_POST_SLUG)
         intent?.removeExtra(NewPostNotifier.EXTRA_POST_ID)
+        if (playerController.active) playerController.close()
         openRecentPost(WatchHistory.RecentPost(slug, id, "", ""))
     }
 
@@ -812,6 +833,7 @@ class MainActivity : ComponentActivity() {
         }
         playbackOptions.setNotificationsEnabled(true)
         notificationsEnabled = true
+        NewPostNotifier.startTracking(this)
         NewPostNotifier.syncSchedule(this, true)
     }
 
@@ -831,6 +853,26 @@ class MainActivity : ComponentActivity() {
         watchHistory.remember(post)
         progressRevision++
         playerController.open(post, block, fromStart)
+    }
+
+    private fun retryDownload(entry: VideoDownloader.Entry) {
+        if (entry.id in retryingDownloads) return
+        retryingDownloads[entry.id] = Unit
+        readInBackground(
+            request = { VideoDownloader.retry(applicationContext, entry, api::post) },
+            done = { started ->
+                retryingDownloads.remove(entry.id)
+                if (!started) Toast.makeText(this, R.string.download_retry_failed, Toast.LENGTH_LONG).show()
+            },
+            failed = {
+                retryingDownloads.remove(entry.id)
+                Toast.makeText(this, R.string.download_retry_failed, Toast.LENGTH_LONG).show()
+            },
+        )
+    }
+
+    private fun openSavedPost(item: SavedPostsStore.Item) {
+        openRecentPost(WatchHistory.RecentPost(item.slug, item.id, item.title, item.author))
     }
 
     private fun openRecentPost(recent: WatchHistory.RecentPost) {
@@ -856,6 +898,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onSignedIn() {
+        NewPostNotifier.reset(this)
+        if (notificationsEnabled) NewPostNotifier.startTracking(this)
         watchHistory.clear()
         backStack.clear()
         homeFeed = null
@@ -890,6 +934,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun clearSessionScreen() {
+        NewPostNotifier.reset(this)
+        retryingDownloads.clear()
         if (playerController.hasVideo()) playerController.close()
         sessionEpoch++
         busy = false

@@ -288,4 +288,34 @@
     <string name="notifications_channel_name">Новые видео</string>
     <string name="notifications_channel_description">Уведомления о выходе новых видео у ваших авторов</string>
     <string name="player_next_video">Следующее видео</string>
+    <string name="authors_search_title">Поиск каналов</string>
+    <string name="authors_search_empty">Каналы не найдены</string>
+    <string name="settings_pip_title">Картинка в картинке при сворачивании</string>
+    <string name="settings_pip_hint">Открывать видео в плавающем окне при выходе на главный экран устройства.</string>
+    <string name="watch_later_empty">Добавьте публикацию в закладки, чтобы увидеть её здесь.</string>
+    <string name="watch_later_remove">Убрать из закладок</string>
+    <string name="downloads_title">Загрузки</string>
+    <string name="downloads_empty">Загруженные видео появятся здесь.</string>
+    <string name="downloads_load_failed">Не удалось получить список загрузок.</string>
+    <string name="download_running">Скачивается</string>
+    <string name="download_wait_network">Ожидание сети</string>
+    <string name="download_wait_wifi">Ожидание Wi‑Fi</string>
+    <string name="download_paused">Приостановлено</string>
+    <string name="download_complete">Скачано</string>
+    <string name="download_no_space">Недостаточно места</string>
+    <string name="download_file_error">Не удалось сохранить файл</string>
+    <string name="download_network_error">Ошибка сети или сервера</string>
+    <string name="download_failed">Ошибка загрузки</string>
+    <string name="download_queued">В очереди</string>
+    <string name="download_http_error">Ошибка сервера (HTTP %1$d)</string>
+    <string name="download_bytes">%1$s из %2$s</string>
+    <string name="download_open">Открыть файл</string>
+    <string name="download_open_failed">Не удалось открыть видеофайл.</string>
+    <string name="download_retry_failed">Не удалось перезапустить загрузку. Откройте публикацию и выберите качество заново.</string>
+    <plurals name="notifications_video_count">
+        <item quantity="one">%d новое видео</item>
+        <item quantity="few">%d новых видео</item>
+        <item quantity="many">%d новых видео</item>
+        <item quantity="other">%d нового видео</item>
+    </plurals>
 </resources>

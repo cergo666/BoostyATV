@@ -64,6 +64,7 @@ internal class AuthorsState(
     private val backend: AuthorsBackend,
 ) {
     val items = mutableStateListOf<BoostyApi.Author>()
+    var searchQuery by mutableStateOf("")
     var loading by mutableStateOf(false)
         private set
     var errorMessage by mutableStateOf<String?>(null)
@@ -73,6 +74,7 @@ internal class AuthorsState(
     var hasMore by mutableStateOf(false)
         private set
     private var initialized = false
+    private var generation = 0
 
     fun ensureLoaded() {
         if (initialized) return
@@ -81,6 +83,8 @@ internal class AuthorsState(
     }
 
     fun reload() {
+        generation++
+        loading = false
         initialized = true
         items.clear()
         nextOffset = 0
@@ -103,16 +107,20 @@ internal class AuthorsState(
         if (loading) return
         loading = true
         errorMessage = null
+        val requestGeneration = generation
         backend.loadAuthors(
             offset = offset,
             onSuccess = { page ->
+                if (requestGeneration != generation) return@loadAuthors
                 if (offset == 0) items.clear()
-                items.addAll(page.items())
-                hasMore = page.next() >= 0
-                if (page.next() >= 0) nextOffset = page.next()
+                val knownSlugs = items.mapTo(HashSet()) { it.slug() }
+                items.addAll(page.items().filter { knownSlugs.add(it.slug()) })
+                hasMore = page.next() > offset
+                if (hasMore) nextOffset = page.next()
                 loading = false
             },
             onError = { message ->
+                if (requestGeneration != generation) return@loadAuthors
                 errorMessage = message
                 loading = false
             },
@@ -127,10 +135,10 @@ internal fun AuthorsScreenView(
 ) {
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
-    var searchQuery by remember { mutableStateOf("") }
+    val searchQuery = state.searchQuery
     var showSearchDialog by remember { mutableStateOf(false) }
 
-    val filteredItems = remember(state.items.size, searchQuery) {
+    val filteredItems = remember(state.items.toList(), searchQuery) {
         val q = searchQuery.trim()
         if (q.isEmpty()) state.items.toList()
         else state.items.filter {
@@ -142,6 +150,10 @@ internal fun AuthorsScreenView(
         state.ensureLoaded()
     }
 
+    LaunchedEffect(searchQuery, state.nextOffset, state.hasMore, state.loading, state.errorMessage) {
+        if (searchQuery.isNotBlank() && state.errorMessage == null) state.loadMore()
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         ScreenToolbar(
             title = stringResource(if (isTv) R.string.nav_channels else R.string.feed_subscriptions),
@@ -151,7 +163,7 @@ internal fun AuthorsScreenView(
             actions = {
                 BoostyIconButton(
                     iconRes = R.drawable.ic_search,
-                    contentDescription = stringResource(R.string.feed_channel_search),
+                    contentDescription = stringResource(R.string.authors_search_title),
                     onClick = { showSearchDialog = true },
                 )
                 if (isTv) {
@@ -215,7 +227,8 @@ internal fun AuthorsScreenView(
                     }
                 }
 
-                if (state.items.isEmpty() && state.loading) {
+                if (filteredItems.isEmpty() && (state.loading ||
+                        (searchQuery.isNotBlank() && state.hasMore && state.errorMessage == null))) {
                     items(count = if (isTv) columns * 2 else 6, key = { "author_skel_$it" }) {
                         AuthorSkeleton(isTv = isTv)
                     }
@@ -228,7 +241,7 @@ internal fun AuthorsScreenView(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = stringResource(R.string.feed_no_subscriptions),
+                                text = stringResource(if (searchQuery.isBlank()) R.string.feed_no_subscriptions else R.string.authors_search_empty),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = palette.muted,
                             )
@@ -254,7 +267,12 @@ internal fun AuthorsScreenView(
                     }
                 }
 
-                if (state.hasMore && searchQuery.isBlank()) {
+                if (searchQuery.isNotBlank() && filteredItems.isNotEmpty() && state.hasMore && state.errorMessage == null) {
+                    item(key = "authors_search_loading", span = { GridItemSpan(maxLineSpan) }) {
+                        Text(stringResource(R.string.loading), color = palette.muted, modifier = Modifier.padding(12.dp))
+                    }
+                }
+                if (state.hasMore && searchQuery.isBlank() && state.errorMessage == null) {
                     item(key = "authors_more", span = { GridItemSpan(maxLineSpan) }) {
                         Box(
                             modifier = Modifier
@@ -281,16 +299,16 @@ internal fun AuthorsScreenView(
 
     if (showSearchDialog) {
         BoostyTextInputDialog(
-            title = stringResource(R.string.feed_channel_search),
+            title = stringResource(R.string.authors_search_title),
             initialValue = searchQuery,
             placeholder = stringResource(R.string.authors_search_hint),
             confirmLabel = stringResource(R.string.feed_search_dialog_find),
             onConfirm = { query ->
-                searchQuery = query.trim()
+                state.searchQuery = query.trim()
                 showSearchDialog = false
             },
             onReset = {
-                searchQuery = ""
+                state.searchQuery = ""
                 showSearchDialog = false
             },
             onDismiss = { showSearchDialog = false },

@@ -59,6 +59,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -987,12 +988,13 @@ internal fun BoostyTextInputDialog(
     onReset: (() -> Unit)? = null,
     errorText: String? = null,
     keyboardType: KeyboardType = KeyboardType.Text,
+    submitting: Boolean = false,
 ) {
     val palette = BoostyTheme.palette
-    var text by remember(initialValue) { mutableStateOf(initialValue) }
+    var text by rememberSaveable(initialValue) { mutableStateOf(initialValue) }
     BoostyOverlaySheet(
         title = title,
-        onDismiss = onDismiss,
+        onDismiss = { if (!submitting) onDismiss() },
         footer = {
             if (onReset != null) {
                 BoostyButton(
@@ -1005,17 +1007,20 @@ internal fun BoostyTextInputDialog(
                 text = stringResource(R.string.cancel),
                 onClick = onDismiss,
                 primary = false,
+                enabled = !submitting,
             )
             BoostyButton(
-                text = confirmLabel,
+                text = if (submitting) stringResource(R.string.loading) else confirmLabel,
                 onClick = { onConfirm(text.trim()) },
                 primary = true,
+                enabled = !submitting,
             )
         },
     ) {
         OutlinedTextField(
             value = text,
             onValueChange = { text = it },
+            readOnly = submitting,
             singleLine = true,
             placeholder = { Text(placeholder, color = palette.muted) },
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = palette.ink),
@@ -1023,7 +1028,7 @@ internal fun BoostyTextInputDialog(
                 keyboardType = keyboardType,
                 imeAction = ImeAction.Done,
             ),
-            keyboardActions = KeyboardActions(onDone = { onConfirm(text.trim()) }),
+            keyboardActions = KeyboardActions(onDone = { if (!submitting) onConfirm(text.trim()) }),
             shape = ControlShape,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = palette.accent,

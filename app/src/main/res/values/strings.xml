@@ -288,4 +288,32 @@
     <string name="notifications_channel_name">New videos</string>
     <string name="notifications_channel_description">Alerts when followed creators publish new videos</string>
     <string name="player_next_video">Next video</string>
+    <string name="authors_search_title">Search channels</string>
+    <string name="authors_search_empty">No matching channels</string>
+    <string name="settings_pip_title">Picture-in-picture on exit</string>
+    <string name="settings_pip_hint">Keep the video in a floating window when you leave the app.</string>
+    <string name="watch_later_empty">Save a post to see it here.</string>
+    <string name="watch_later_remove">Remove bookmark</string>
+    <string name="downloads_title">Downloads</string>
+    <string name="downloads_empty">Downloaded videos will appear here.</string>
+    <string name="downloads_load_failed">Couldn\'t read downloads.</string>
+    <string name="download_running">Downloading</string>
+    <string name="download_wait_network">Waiting for connection</string>
+    <string name="download_wait_wifi">Waiting for Wi-Fi</string>
+    <string name="download_paused">Paused</string>
+    <string name="download_complete">Downloaded</string>
+    <string name="download_no_space">Not enough space</string>
+    <string name="download_file_error">Couldn\'t save the file</string>
+    <string name="download_network_error">Connection or server error</string>
+    <string name="download_failed">Download failed</string>
+    <string name="download_queued">Queued</string>
+    <string name="download_http_error">Server error (HTTP %1$d)</string>
+    <string name="download_bytes">%1$s of %2$s</string>
+    <string name="download_open">Open file</string>
+    <string name="download_open_failed">Couldn\'t open the video file.</string>
+    <string name="download_retry_failed">Couldn\'t restart the download. Open the post to choose a new quality.</string>
+    <plurals name="notifications_video_count">
+        <item quantity="one">%d new video</item>
+        <item quantity="other">%d new videos</item>
+    </plurals>
 </resources>

@@ -111,6 +111,14 @@ final class PlaybackOptions {
         preferences.edit().putBoolean("oled_theme", enabled).apply();
     }
 
+    boolean automaticPip() {
+        return preferences.getBoolean("automatic_pip", true);
+    }
+
+    void setAutomaticPip(boolean enabled) {
+        preferences.edit().putBoolean("automatic_pip", enabled).apply();
+    }
+
     boolean notificationsEnabled() {
         return preferences.getBoolean("new_video_notifications", false);
     }

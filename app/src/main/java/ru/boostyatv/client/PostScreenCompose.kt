@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -130,7 +131,8 @@ internal fun PostScreenView(
     val localReactions = remember(post.id()) { mutableStateMapOf<String, Reactions>() }
     val pendingReactions = remember(post.id()) { mutableStateMapOf<String, Boolean>() }
     var reactionPicker by remember(post.id()) { mutableStateOf<ReactionPickerRequest?>(null) }
-    var commentComposerParent by remember(post.id()) { mutableStateOf<Long?>(null) }
+    var commentComposerParent by rememberSaveable(post.id()) { mutableStateOf<Long?>(null) }
+    var commentSendFailed by remember(post.id()) { mutableStateOf(false) }
     var sendingComment by remember(post.id()) { mutableStateOf(false) }
 
     var rootComments by remember(post.id()) { mutableStateOf(CommentsFeed()) }
@@ -156,7 +158,7 @@ internal fun PostScreenView(
             onSuccess = { page ->
                 if (parent == 0L) {
                     rootComments = CommentsFeed(
-                        items = rootComments.items + page.items(),
+                        items = (rootComments.items + page.items()).distinctBy { it.id() },
                         next = page.next(),
                         loading = false,
                         failed = false,
@@ -165,7 +167,7 @@ internal fun PostScreenView(
                 } else {
                     val current = replyThreads[parent] ?: CommentsFeed()
                     replyThreads[parent] = CommentsFeed(
-                        items = current.items + page.items(),
+                        items = (current.items + page.items()).distinctBy { it.id() },
                         next = page.next(),
                         loading = false,
                         failed = false,
@@ -542,10 +544,12 @@ internal fun PostScreenView(
             initialValue = "",
             placeholder = stringResource(R.string.post_comment_hint),
             confirmLabel = stringResource(R.string.post_comment_send),
+            submitting = sendingComment,
+            errorText = if (commentSendFailed) stringResource(R.string.post_comment_failed) else null,
             onConfirm = { raw ->
                 val text = raw.trim()
-                if (text.isEmpty()) return@BoostyTextInputDialog
-                commentComposerParent = null
+                if (text.isEmpty() || sendingComment) return@BoostyTextInputDialog
+                commentSendFailed = false
                 sendingComment = true
                 backend.addComment(
                     post = post,
@@ -553,6 +557,7 @@ internal fun PostScreenView(
                     text = text,
                     onSuccess = { created ->
                         sendingComment = false
+                        commentComposerParent = null
                         if (parentId == 0L) {
                             rootComments = rootComments.copy(
                                 items = listOf(created) + rootComments.items,
@@ -570,11 +575,16 @@ internal fun PostScreenView(
                     },
                     onError = {
                         sendingComment = false
-                        Toast.makeText(context, resources.getString(R.string.post_comment_failed), Toast.LENGTH_LONG).show()
+                        commentSendFailed = true
                     },
                 )
             },
-            onDismiss = { commentComposerParent = null },
+            onDismiss = {
+                if (!sendingComment) {
+                    commentComposerParent = null
+                    commentSendFailed = false
+                }
+            },
         )
     }
 
@@ -1024,7 +1034,7 @@ private fun VideoBlockCard(
                             iconRes = R.drawable.ic_download,
                             onClick = {
                                 showDownloadSheet = false
-                                val started = VideoDownloader.enqueue(context, videoTitle, option)
+                                val started = VideoDownloader.enqueue(context, videoTitle, option, post, block)
                                 val message = if (started) {
                                     resources.getString(R.string.post_download_started, option.label)
                                 } else {

@@ -31,6 +31,7 @@ internal fun SettingsScreenView(
     options: PlaybackOptions,
     oledEnabled: Boolean,
     notificationsEnabled: Boolean,
+    onOpenDownloads: () -> Unit,
     updating: Boolean,
     onToggleOled: (Boolean) -> Unit,
     onToggleNotifications: (Boolean) -> Unit,
@@ -41,6 +42,9 @@ internal fun SettingsScreenView(
     val context = LocalContext.current
     val resources = LocalResources.current
     val isTv = BoostyTheme.isTv
+
+    var automaticPip by remember { mutableStateOf(options.automaticPip()) }
+    val supportsPip = !isTv && context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)
 
     var qualityIndex by remember { mutableIntStateOf(options.qualityIndex()) }
     var selectedPlayer by remember { mutableStateOf(options.player()) }
@@ -95,6 +99,19 @@ internal fun SettingsScreenView(
                     onClick = { showPlayerSheet = true },
                 )
 
+                if (supportsPip) {
+                    BoostySettingsRow(
+                        iconRes = R.drawable.ic_play,
+                        title = stringResource(R.string.settings_pip_title),
+                        subtitle = stringResource(R.string.settings_pip_hint),
+                        onClick = {
+                            automaticPip = !automaticPip
+                            options.setAutomaticPip(automaticPip)
+                        },
+                        trailing = { BoostySwitch(checked = automaticPip) },
+                    )
+                }
+
                 BoostySettingsSection(stringResource(R.string.settings_section_appearance))
 
                 BoostySettingsRow(
@@ -127,6 +144,11 @@ internal fun SettingsScreenView(
                 }
 
                 BoostySettingsSection(stringResource(R.string.settings_section_app))
+                BoostySettingsRow(
+                    iconRes = R.drawable.ic_download,
+                    title = stringResource(R.string.downloads_title),
+                    onClick = onOpenDownloads,
+                )
 
                 if (!isTv) {
                     BoostySettingsRow(

@@ -316,6 +316,7 @@ internal fun FeedScreenView(
     onOpenRecentPost: (WatchHistory.RecentPost) -> Unit,
     onOpenSavedPost: (SavedPostsStore.Item) -> Unit = {},
     onOpenHistory: () -> Unit = {},
+    onOpenWatchLater: () -> Unit = {},
     onScanQr: () -> Unit,
     authorsState: AuthorsState? = null,
     onOpenAuthor: (slug: String, name: String) -> Unit = { _, _ -> },
@@ -329,15 +330,6 @@ internal fun FeedScreenView(
     var showSearchDialog by remember { mutableStateOf(false) }
     var showTagsSheet by remember { mutableStateOf(false) }
     var showNoTagsNotice by remember { mutableStateOf(false) }
-
-    LaunchedEffect(isHome, state.visible.firstOrNull()?.id()) {
-        if (isHome) {
-            val firstVideo = state.visible.firstOrNull { it.hasVideo() }
-            if (firstVideo != null) {
-                NewPostNotifier.markLatestSeen(context, firstVideo.id())
-            }
-        }
-    }
 
     LaunchedEffect(isHome, authorsState) {
         if (isHome && authorsState != null) {
@@ -402,6 +394,11 @@ internal fun FeedScreenView(
             onBack = onBack,
             actions = {
                 if (isHome) {
+                    BoostyIconButton(
+                        iconRes = R.drawable.ic_bookmark,
+                        contentDescription = stringResource(R.string.feed_watch_later),
+                        onClick = onOpenWatchLater,
+                    )
                     if (isTv) {
                         BoostyIconButton(
                             iconRes = R.drawable.ic_refresh,
