@@ -258,4 +258,8 @@
     <string name="player_seek_forward_short">+10 с</string>
     <string name="player_subtitles_off">Выключены</string>
     <string name="player_track_auto">Авто</string>
+    <string name="post_download">Скачать</string>
+    <string name="post_download_title">Скачать видео</string>
+    <string name="post_download_started">Загрузка началась (%1$s)</string>
+    <string name="post_download_failed">Не удалось запустить загрузку.</string>
 </resources>

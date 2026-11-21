@@ -258,4 +258,8 @@
     <string name="player_seek_forward_short">+10s</string>
     <string name="player_subtitles_off">Off</string>
     <string name="player_track_auto">Auto</string>
+    <string name="post_download">Download</string>
+    <string name="post_download_title">Download video</string>
+    <string name="post_download_started">Download started (%1$s)</string>
+    <string name="post_download_failed">Failed to start download.</string>
 </resources>

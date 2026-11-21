@@ -797,6 +797,13 @@ private fun VideoBlockCard(
                 color = palette.muted,
             )
         } else {
+            val downloadOptions = remember(block.videoId(), block.sources()) {
+                VideoDownloader.availableOptions(block.sources())
+            }
+            var showDownloadSheet by remember { mutableStateOf(false) }
+            val videoTitle = remember(block.text(), post.id()) {
+                block.text().ifBlank { post.displayTitle(context) }
+            }
             val defaultPlayLabel = stringResource(if (isTv) R.string.post_play else R.string.post_play_from_start)
             val playLabel = if (resumeMs > 0L) {
                 stringResource(R.string.post_continue_watching, TimeFormat.format(context, resumeMs))
@@ -825,6 +832,14 @@ private fun VideoBlockCard(
                             modifier = Modifier.weight(1f),
                         )
                     }
+                    if (downloadOptions.isNotEmpty()) {
+                        BoostyButton(
+                            text = stringResource(R.string.post_download),
+                            iconRes = R.drawable.ic_download,
+                            primary = false,
+                            onClick = { showDownloadSheet = true },
+                        )
+                    }
                 }
             } else {
                 BoostyButton(
@@ -834,13 +849,54 @@ private fun VideoBlockCard(
                     onClick = { onOpenPlayer(post, block, false) },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (resumeMs > 0L) {
-                    BoostyButton(
-                        text = stringResource(R.string.post_play_from_start),
-                        primary = false,
-                        onClick = { onOpenPlayer(post, block, true) },
+                if (resumeMs > 0L || downloadOptions.isNotEmpty()) {
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                    )
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        if (resumeMs > 0L) {
+                            BoostyButton(
+                                text = stringResource(R.string.post_play_from_start),
+                                primary = false,
+                                onClick = { onOpenPlayer(post, block, true) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        if (downloadOptions.isNotEmpty()) {
+                            BoostyButton(
+                                text = stringResource(R.string.post_download),
+                                iconRes = R.drawable.ic_download,
+                                primary = false,
+                                onClick = { showDownloadSheet = true },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (showDownloadSheet) {
+                BoostyOverlaySheet(
+                    title = stringResource(R.string.post_download_title),
+                    subtitle = videoTitle,
+                    onDismiss = { showDownloadSheet = false },
+                ) {
+                    downloadOptions.forEach { option ->
+                        BoostySheetOption(
+                            label = option.label,
+                            iconRes = R.drawable.ic_download,
+                            onClick = {
+                                showDownloadSheet = false
+                                val started = VideoDownloader.enqueue(context, videoTitle, option)
+                                val message = if (started) {
+                                    resources.getString(R.string.post_download_started, option.label)
+                                } else {
+                                    resources.getString(R.string.post_download_failed)
+                                }
+                                android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                        )
+                    }
                 }
             }
         }
