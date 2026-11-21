@@ -262,4 +262,9 @@
     <string name="post_download_title">Скачать видео</string>
     <string name="post_download_started">Загрузка началась (%1$s)</string>
     <string name="post_download_failed">Не удалось запустить загрузку.</string>
+    <string name="about_support_title">Поддержать проект</string>
+    <string name="about_support_tbank">ТБанк донаты</string>
+    <string name="about_support_ozon">Ozon донаты</string>
+    <string name="about_support_subtitle">По СБП или любой картой</string>
+    <string name="about_support_action">Поддержать →</string>
 </resources>
