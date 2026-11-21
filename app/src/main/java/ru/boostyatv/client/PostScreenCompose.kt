@@ -987,6 +987,9 @@ private fun CommentCard(
         }
     }
 
+    val hasInteractiveChildren = (!post.reactionsDisabled() && comment.reactionId().isNotEmpty()) ||
+        (showReplies && comment.id() > 0L && comment.replyCount() > 0)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -997,8 +1000,8 @@ private fun CommentCard(
                 color = if (focused) palette.focusRing else palette.hairline,
                 shape = ControlShape,
             )
-            .onFocusChanged { focused = it.isFocused }
-            .then(if (isTv) Modifier.focusable() else Modifier)
+            .onFocusChanged { focused = it.hasFocus }
+            .then(if (isTv && !hasInteractiveChildren) Modifier.focusable() else Modifier)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
