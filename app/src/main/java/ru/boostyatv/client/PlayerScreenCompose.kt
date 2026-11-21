@@ -175,6 +175,8 @@ internal class PlayerSessionController(
         private set
     var videoAuthorSlug by mutableStateOf("")
         private set
+    var isLive by mutableStateOf(false)
+        private set
     var isPlaying by mutableStateOf(false)
         private set
     var isBuffering by mutableStateOf(false)
@@ -239,10 +241,12 @@ internal class PlayerSessionController(
     fun hasVideo(): Boolean = video != null
 
     fun open(post: Post, block: Post.Block, fromStart: Boolean) {
+        val live = block.kind() == LIVE_BLOCK
         val app = callbacks.playbackOptions.player()
-        val position = if (fromStart) 0L else callbacks.watchHistory.get(block).resume()
-        if (app != PlaybackOptions.App.BUILT_IN && launchExternal(block, app, position)) return
+        val position = if (fromStart || live) 0L else callbacks.watchHistory.get(block).resume()
+        if (!live && app != PlaybackOptions.App.BUILT_IN && launchExternal(block, app, position)) return
         video = block
+        isLive = live
         videoTitle = block.text().ifBlank { post.displayTitle(activity) }
         videoAuthor = post.author()
         videoAuthorSlug = post.slug()
@@ -250,7 +254,7 @@ internal class PlayerSessionController(
         reconnectAttempted = false
         playbackError = false
         requestNotificationPermission()
-        playbackSpeed = callbacks.playbackOptions.speedFor(videoAuthorSlug)
+        playbackSpeed = if (isLive) 1f else callbacks.playbackOptions.speedFor(videoAuthorSlug)
         resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
         videoFormat = null
         audioFormat = null
@@ -288,8 +292,9 @@ internal class PlayerSessionController(
         val sources = ArrayList<Post.Source>(urls.size)
         for (i in urls.indices) sources.add(Post.Source(types[i], urls[i]))
         val restoredTitle = savedState.getString("builtin_title", "")
+        isLive = savedState.getBoolean("builtin_live")
         video = Post.Block(
-            "video",
+            if (isLive) LIVE_BLOCK else "video",
             restoredTitle,
             "",
             sources,
@@ -299,6 +304,7 @@ internal class PlayerSessionController(
         )
         videoTitle = restoredTitle
         videoAuthor = savedState.getString("builtin_author", "")
+        videoAuthorSlug = savedState.getString("builtin_author_slug", "")
         mediaId = savedState.getString("builtin_media_id", "")
         playbackSources = sources
         sourceIndex = savedState.getInt("builtin_source").coerceIn(0, sources.lastIndex)
@@ -328,6 +334,8 @@ internal class PlayerSessionController(
             out.putString("builtin_video_id", currentVideo.videoId())
             out.putString("builtin_title", videoTitle)
             out.putString("builtin_author", videoAuthor)
+            out.putString("builtin_author_slug", videoAuthorSlug)
+            out.putBoolean("builtin_live", isLive)
             out.putLong("builtin_duration", currentVideo.durationMs())
             out.putInt("builtin_source", sourceIndex)
             out.putLong("builtin_position", player?.currentPosition ?: playbackPosition)
@@ -364,6 +372,8 @@ internal class PlayerSessionController(
         releaseController(true)
         video = null
         active = false
+        isLive = false
+        isPlaying = false
         playbackError = false
         showStreamStats = false
         playbackSources = emptyList()
@@ -376,12 +386,14 @@ internal class PlayerSessionController(
         if (controller.isPlaying) {
             controller.pause()
         } else {
-            if (controller.playbackState == Player.STATE_ENDED) controller.seekTo(0L)
+            if (isLive) controller.seekToDefaultPosition()
+            else if (controller.playbackState == Player.STATE_ENDED) controller.seekTo(0L)
             controller.play()
         }
     }
 
     fun seekBy(deltaMs: Long) {
+        if (isLive) return
         val controller = player ?: return
         val maxDuration = if (controller.duration > 0L) controller.duration else Long.MAX_VALUE
         val target = (controller.currentPosition + deltaMs).coerceIn(0L, maxDuration)
@@ -389,6 +401,7 @@ internal class PlayerSessionController(
     }
 
     fun seekTo(timeMs: Long) {
+        if (isLive) return
         val controller = player ?: return
         val clamped = timeMs.coerceAtLeast(0L)
         controller.seekTo(clamped)
@@ -404,6 +417,7 @@ internal class PlayerSessionController(
     }
 
     fun setSpeed(speed: Float) {
+        if (isLive) return
         playbackSpeed = speed
         callbacks.playbackOptions.setSpeedFor(videoAuthorSlug, speed)
         player?.setPlaybackSpeed(speed)
@@ -577,7 +591,9 @@ internal class PlayerSessionController(
             override fun onPlaybackStateChanged(state: Int) {
                 isBuffering = state == Player.STATE_BUFFERING
                 if (state == Player.STATE_READY) playbackStarted = true
-                else if (state == Player.STATE_ENDED) savePlayback()
+                else if (state == Player.STATE_ENDED) {
+                    if (isLive) playbackError = true else savePlayback()
+                }
             }
 
             override fun onIsPlayingChanged(playing: Boolean) {
@@ -606,6 +622,7 @@ internal class PlayerSessionController(
             }
         })
         if (!continuing) prepareSource(controller)
+        else if (isLive && controller.playbackState == Player.STATE_ENDED) playbackError = true
         controllerRevision++
         scheduleTicks()
     }
@@ -643,7 +660,8 @@ internal class PlayerSessionController(
         val item = MediaItem.Builder().setMediaId(mediaId).setUri(source.url())
         if (source.type().contains("hls")) item.setMimeType(MimeTypes.APPLICATION_M3U8)
         else if (source.type().contains("dash")) item.setMimeType(MimeTypes.APPLICATION_MPD)
-        controller.setMediaItem(item.build(), playbackPosition)
+        if (isLive) controller.setMediaItem(item.build())
+        else controller.setMediaItem(item.build(), playbackPosition)
         controller.playWhenReady = resumePlayback
         controller.prepare()
     }
@@ -659,7 +677,7 @@ internal class PlayerSessionController(
     private fun savePlayback() {
         val controller = player ?: return
         val currentVideo = video ?: return
-        if (!playbackStarted) return
+        if (isLive || !playbackStarted) return
         val duration = if (controller.duration > 0L) controller.duration else currentVideo.durationMs()
         val position = if (controller.playbackState == Player.STATE_ENDED && duration > 0L) {
             duration
@@ -813,6 +831,7 @@ internal fun PlayerScreenView(
     options: PlaybackOptions,
     inPictureInPicture: Boolean = false,
     onPlayNext: (() -> Unit)? = null,
+    onRetryLive: (() -> Unit)? = null,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -844,6 +863,7 @@ internal fun PlayerScreenView(
     }
 
     fun stepSeek(deltaSec: Int) {
+        if (controller.isLive) return
         controller.seekBy(deltaSec * 1000L)
         accumulatedSeekSec = if (
             (accumulatedSeekSec > 0 && deltaSec > 0) || (accumulatedSeekSec < 0 && deltaSec < 0)
@@ -923,12 +943,14 @@ internal fun PlayerScreenView(
                             return@onPreviewKeyEvent true
                         }
                         KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                            if (controller.isLive) return@onPreviewKeyEvent true
                             controller.seekBy(-10_000L)
                             showFeedback(resources.getString(R.string.player_seek_back_short))
                             bumpControls()
                             return@onPreviewKeyEvent true
                         }
                         KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                            if (controller.isLive) return@onPreviewKeyEvent true
                             controller.seekBy(10_000L)
                             showFeedback(resources.getString(R.string.player_seek_forward_short))
                             bumpControls()
@@ -1165,7 +1187,7 @@ internal fun PlayerScreenView(
                         horizontalArrangement = Arrangement.spacedBy(if (isTv) 28.dp else 20.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        PlayerTransportButton(
+                        if (!controller.isLive) PlayerTransportButton(
                             iconRes = R.drawable.ic_replay_10,
                             contentDescription = stringResource(R.string.player_seek_back_10),
                             size = if (isTv) 54.dp else 48.dp,
@@ -1189,7 +1211,7 @@ internal fun PlayerScreenView(
                                 bumpControls()
                             },
                         )
-                        PlayerTransportButton(
+                        if (!controller.isLive) PlayerTransportButton(
                             iconRes = R.drawable.ic_forward_10,
                             contentDescription = stringResource(R.string.player_seek_forward_10),
                             size = if (isTv) 54.dp else 48.dp,
@@ -1234,34 +1256,46 @@ internal fun PlayerScreenView(
                         ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    PlayerSeekBar(
-                        positionMs = controller.currentPositionMs,
-                        bufferedMs = controller.bufferedPositionMs,
-                        durationMs = controller.durationMs,
-                        onSeek = { target ->
-                            controller.seekTo(target)
-                            bumpControls()
-                        },
-                        onStep = { delta ->
-                            controller.seekBy(delta)
-                            bumpControls()
-                        },
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    if (controller.isLive) {
                         Text(
-                            text = TimeFormat.format(context, controller.currentPositionMs),
+                            text = stringResource(R.string.live_title),
                             style = MaterialTheme.typography.labelLarge,
                             color = Color.White,
+                            modifier = Modifier
+                                .clip(PillShape)
+                                .background(Color(0xFFAE252B))
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
                         )
-                        Text(
-                            text = TimeFormat.format(context, controller.durationMs),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color.White.copy(alpha = 0.72f),
+                    } else {
+                        PlayerSeekBar(
+                            positionMs = controller.currentPositionMs,
+                            bufferedMs = controller.bufferedPositionMs,
+                            durationMs = controller.durationMs,
+                            onSeek = { target ->
+                                controller.seekTo(target)
+                                bumpControls()
+                            },
+                            onStep = { delta ->
+                                controller.seekBy(delta)
+                                bumpControls()
+                            },
                         )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = TimeFormat.format(context, controller.currentPositionMs),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Color.White,
+                            )
+                            Text(
+                                text = TimeFormat.format(context, controller.durationMs),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Color.White.copy(alpha = 0.72f),
+                            )
+                        }
                     }
                 }
             }
@@ -1317,10 +1351,10 @@ internal fun PlayerScreenView(
     if (controller.playbackError) {
         BoostyConfirmDialog(
             title = stringResource(R.string.player_settings),
-            message = stringResource(R.string.player_error_playback),
-            confirmLabel = stringResource(R.string.player_error_go_to_post),
-            dismissLabel = null,
-            onConfirm = onBack,
+            message = stringResource(if (controller.isLive) R.string.live_playback_failed else R.string.player_error_playback),
+            confirmLabel = stringResource(if (onRetryLive != null) R.string.retry else R.string.player_error_go_to_post),
+            dismissLabel = if (onRetryLive != null) stringResource(R.string.nav_back) else null,
+            onConfirm = onRetryLive ?: onBack,
             onDismiss = onBack,
         )
     }
@@ -1553,7 +1587,7 @@ private fun PlayerSettingsOverlay(
                     focusRequester = firstFocus,
                     onClick = { onNavigate(PlayerMenuPage.QUALITY) },
                 )
-                BoostySheetOption(
+                if (!controller.isLive) BoostySheetOption(
                     label = stringResource(R.string.player_speed),
                     trailingText = "${controller.playbackSpeed}×",
                     iconRes = R.drawable.ic_speed,
@@ -1587,12 +1621,12 @@ private fun PlayerSettingsOverlay(
                     iconRes = R.drawable.ic_aspect_ratio,
                     onClick = { onNavigate(PlayerMenuPage.FRAME_SIZE) },
                 )
-                BoostySheetOption(
+                if (!controller.isLive) BoostySheetOption(
                     label = stringResource(R.string.player_seek_time),
                     iconRes = R.drawable.ic_history,
                     onClick = onOpenSeekTime,
                 )
-                BoostySheetOption(
+                if (!controller.isLive) BoostySheetOption(
                     label = stringResource(R.string.player_from_start),
                     iconRes = R.drawable.ic_replay_10,
                     onClick = {

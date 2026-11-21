@@ -316,4 +316,14 @@
         <item quantity="one">%d new video</item>
         <item quantity="other">%d new videos</item>
     </plurals>
+    <string name="live_shelf">Live streams</string>
+    <string name="live_title">Live now</string>
+    <string name="live_scheduled">%1$s at %2$s</string>
+    <string name="live_subscription">Subscription required</string>
+    <string name="live_ended">This stream is no longer available.</string>
+    <string name="live_locked">Your Boosty subscription doesn’t include this stream.</string>
+    <string name="live_not_started">The stream hasn’t started yet.</string>
+    <string name="live_no_source">Boosty hasn’t provided a playable live stream yet. Try again shortly.</string>
+    <string name="live_playback_failed">The stream stopped. It may have ended or the connection may have dropped.</string>
+    <string name="live_reload_failed">Couldn’t load live streams. Retry</string>
 </resources>

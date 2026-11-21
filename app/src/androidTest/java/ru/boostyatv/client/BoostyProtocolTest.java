@@ -181,6 +181,49 @@ public final class BoostyProtocolTest {
         assertEquals(-1, posts.get(1).views());
     }
 
+    @Test public void liveStreamsUseTheFeedAndRefreshPlaybackThroughTheChannel() throws Exception {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SessionStore store = new SessionStore(context.getSharedPreferences("live-protocol-test", Context.MODE_PRIVATE));
+        store.save(new JSONObject().put("access", "test-access")
+            .put("expiry", System.currentTimeMillis() / 1000 + 3600));
+        try {
+            String stream = """
+                {"title":"Live", "isOnline":true, "hasAccess":true, "user":{"blogUrl":"author"},
+                  "data":[{"type":"ok_stream","playerUrls":[{"type":"live_hls","url":"https://media.example.test/live.m3u8"}]}]}
+                """;
+            BoostyApi api = new BoostyApi(store, (method, path, token, form) -> {
+                assertEquals("test-access", token);
+                return switch (path) {
+                    case "/v1/feed/video_stream/?limit=24&only_allowed=false" -> {
+                        assertEquals("GET", method);
+                        yield new JSONObject("{\"data\":{\"streams\":[]}," +
+                            "\"extra\":{\"isLast\":false,\"offset\":\"page+2\"}}");
+                    }
+                    case "/v1/feed/video_stream/?limit=24&only_allowed=false&offset=page%2B2" ->
+                        new JSONObject("{\"data\":{\"streams\":[" + stream + "]},\"extra\":{\"isLast\":true}}");
+                    case "/v1/blog/author/video_stream?from=blog",
+                         "/v1/blog/author/video_stream?from=layer" -> {
+                        assertEquals("GET", method);
+                        yield new JSONObject(stream);
+                    }
+                    case "/v1/blog/author/video_stream/heartbeat/viewer?immortal=false&autoplay=false" -> {
+                        assertEquals("PUT", method);
+                        assertNull(form);
+                        yield new JSONObject("{\"data\":{\"nextRequestInterval\":20}}");
+                    }
+                    default -> throw new AssertionError(path);
+                };
+            });
+            assertEquals(1, api.liveStreams(null).size());
+            assertTrue(api.liveStreams(null).get(0).sources().isEmpty());
+            assertTrue(api.liveStreams("author").get(0).sources().isEmpty());
+            assertEquals("https://media.example.test/live.m3u8", api.liveStream("author", true).sources().get(0).url());
+            assertEquals(20L, api.liveHeartbeat("author", false));
+        } finally {
+            store.clear();
+        }
+    }
+
     @Test public void channelSearchCommentsAndProgressUseBoostyContracts() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         SessionStore store = new SessionStore(context.getSharedPreferences("reader-protocol-test", Context.MODE_PRIVATE));

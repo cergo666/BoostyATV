@@ -74,8 +74,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
 
 internal interface FeedBackend {
+    fun loadLiveStreams(author: String?, onDone: (List<LiveStream>?) -> Unit)
+
     fun loadPosts(
         author: String?,
         offset: String,
@@ -121,6 +126,11 @@ internal class FeedState(
         prefetchStrategy = LazyGridPrefetchStrategy(nestedPrefetchItemCount = 4),
     )
     val visible = mutableStateListOf<Post>()
+    var liveStreams by mutableStateOf<List<LiveStream>>(emptyList())
+        private set
+    var liveStreamsFailed by mutableStateOf(false)
+        private set
+    private var loadingLiveStreams = false
     private val loaded = ArrayList<Post>()
     private val seen = HashSet<String>()
     private val requested = HashSet<String>()
@@ -167,7 +177,22 @@ internal class FeedState(
         reload(userPull = false)
     }
 
+    fun refreshLiveStreams() {
+        if (loadingLiveStreams) return
+        loadingLiveStreams = true
+        backend.loadLiveStreams(author) { streams ->
+            loadingLiveStreams = false
+            liveStreamsFailed = streams == null
+            if (streams != null) {
+                val now = System.currentTimeMillis() / 1000L
+                liveStreams = streams.filter { it.visible(now) }
+                    .sortedWith(compareByDescending<LiveStream> { it.online() }.thenBy { it.publishTime() })
+            }
+        }
+    }
+
     fun reload(userPull: Boolean = false) {
+        refreshLiveStreams()
         initialized = true
         pendingScroll = -1
         generation++
@@ -317,6 +342,7 @@ internal fun FeedScreenView(
     onOpenSavedPost: (SavedPostsStore.Item) -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onOpenWatchLater: () -> Unit = {},
+    onOpenLiveStream: (LiveStream) -> Unit,
     onScanQr: () -> Unit,
     authorsState: AuthorsState? = null,
     onOpenAuthor: (slug: String, name: String) -> Unit = { _, _ -> },
@@ -326,6 +352,16 @@ internal fun FeedScreenView(
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
     val isHome = state.author == null
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+
+    LaunchedEffect(state, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                state.refreshLiveStreams()
+                delay(60_000L)
+            }
+        }
+    }
 
     var showSearchDialog by remember { mutableStateOf(false) }
     var showTagsSheet by remember { mutableStateOf(false) }
@@ -518,6 +554,22 @@ internal fun FeedScreenView(
                                     text = message,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = palette.danger,
+                                )
+                            }
+                        }
+                    }
+
+                    if (state.search.isBlank() && state.selectedTags.isEmpty()) {
+                        if (state.liveStreams.isNotEmpty()) {
+                            item(key = "live_streams", contentType = "live", span = { GridItemSpan(maxLineSpan) }) {
+                                LiveStreamsShelf(state.liveStreams, onOpenLiveStream, onFocusArtwork)
+                            }
+                        } else if (state.liveStreamsFailed && !state.failed && !state.loading && state.visible.isNotEmpty()) {
+                            item(key = "live_streams_failed", span = { GridItemSpan(maxLineSpan) }) {
+                                BoostyButton(
+                                    text = stringResource(R.string.live_reload_failed),
+                                    onClick = state::refreshLiveStreams,
+                                    primary = false,
                                 )
                             }
                         }

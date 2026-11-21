@@ -318,4 +318,14 @@
         <item quantity="many">%d новых видео</item>
         <item quantity="other">%d нового видео</item>
     </plurals>
+    <string name="live_shelf">Прямые эфиры</string>
+    <string name="live_title">Прямой эфир</string>
+    <string name="live_scheduled">%1$s в %2$s</string>
+    <string name="live_subscription">По подписке</string>
+    <string name="live_ended">Этот эфир уже недоступен.</string>
+    <string name="live_locked">Для просмотра нужна подходящая подписка Boosty.</string>
+    <string name="live_not_started">Эфир ещё не начался.</string>
+    <string name="live_no_source">Boosty пока не предоставил поток. Попробуйте немного позже.</string>
+    <string name="live_playback_failed">Воспроизведение прервалось. Эфир мог закончиться или связь могла пропасть.</string>
+    <string name="live_reload_failed">Не удалось загрузить эфиры. Повторить</string>
 </resources>

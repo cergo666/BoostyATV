@@ -228,7 +228,7 @@ record Post(String id, String title, String author, String slug, String authorAv
         }
     }
 
-    private static List<Source> sources(JSONArray items) {
+    static List<Source> sources(JSONArray items) {
         List<Source> sources = new ArrayList<>();
         if (items == null) return sources;
         for (int i = 0; i < items.length(); i++) {

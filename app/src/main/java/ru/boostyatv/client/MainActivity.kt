@@ -30,6 +30,13 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -134,6 +141,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private val feedBackend = object : FeedBackend {
+        override fun loadLiveStreams(author: String?, onDone: (List<LiveStream>?) -> Unit) {
+            readInBackground(
+                request = { api.liveStreams(author) },
+                done = onDone,
+                failed = { onDone(null) },
+            )
+        }
+
         override fun loadPosts(
             author: String?,
             offset: String,
@@ -377,6 +392,35 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun BoostyRootContent() {
         val route = currentRoute
+        val liveAuthor = playerController.videoAuthorSlug.takeIf {
+            it.isNotBlank() && playerController.active && playerController.isLive
+        }
+        LaunchedEffect(liveAuthor) {
+            if (liveAuthor == null) return@LaunchedEffect
+            val session = api
+            snapshotFlow { playerController.isPlaying }.collectLatest { playing ->
+                if (!playing) return@collectLatest
+                try {
+                    while (true) {
+                        val next = withContext(Dispatchers.IO) {
+                            try {
+                                session.liveHeartbeat(liveAuthor, false)
+                            } catch (e: BoostyApi.SignedOut) {
+                                return@withContext null
+                            } catch (e: Exception) {
+                                if (e is CancellationException) throw e
+                                30L
+                            }
+                        } ?: break
+                        delay(next.coerceIn(5, 300) * 1000L)
+                    }
+                } finally {
+                    withContext(NonCancellable + Dispatchers.IO) {
+                        runCatching { session.liveHeartbeat(liveAuthor, true) }
+                    }
+                }
+            }
+        }
         val selectedTab = when (route) {
             AppRoute.Home -> AppTab.HOME
             AppRoute.Channels, is AppRoute.ChannelFeed -> if (tvMode || route == AppRoute.Channels) AppTab.CHANNELS else null
@@ -400,6 +444,12 @@ class MainActivity : ComponentActivity() {
                     controller = playerController,
                     options = playbackOptions,
                     inPictureInPicture = inPictureInPicture,
+                    onRetryLive = liveAuthor?.let { slug ->
+                        {
+                            playerController.close()
+                            openLiveStream(slug)
+                        }
+                    },
                     onPlayNext = nextVideoPost?.let { nextPost ->
                         {
                             val nextBlock = nextPost.blocks().firstOrNull { it.sources().isNotEmpty() }
@@ -492,6 +542,7 @@ class MainActivity : ComponentActivity() {
                                     onOpenSavedPost = ::openSavedPost,
                                     onOpenHistory = { navigateTo(AppRoute.History, push = true) },
                                     onOpenWatchLater = { navigateTo(AppRoute.WatchLater, push = true) },
+                                    onOpenLiveStream = { openLiveStream(it.slug()) },
                                     onScanQr = ::scanTvCode,
                                     authorsState = ensureAuthorsState(),
                                     onOpenAuthor = { slug, name -> showFeed(slug, name, push = true) },
@@ -507,6 +558,7 @@ class MainActivity : ComponentActivity() {
                                 onOpenPost = ::showPost,
                                 onOpenRecentPost = ::openRecentPost,
                                 onOpenHistory = { navigateTo(AppRoute.History, push = true) },
+                                onOpenLiveStream = { openLiveStream(it.slug()) },
                                 onScanQr = ::scanTvCode,
                                 onFocusArtwork = { url -> focusedCoverUrl = url },
                             )
@@ -846,6 +898,35 @@ class MainActivity : ComponentActivity() {
             if (list[i].hasVideo() && list[i].allowed()) return list[i]
         }
         return null
+    }
+
+    private fun openLiveStream(slug: String) {
+        perform(
+            request = { api.liveStream(slug, true) },
+            done = { stream ->
+                val message = when {
+                    stream == null || stream.ended() -> R.string.live_ended
+                    !stream.allowed() -> R.string.live_locked
+                    !stream.online() -> R.string.live_not_started
+                    stream.sources().isEmpty() -> R.string.live_no_source
+                    else -> null
+                }
+                if (message != null || stream == null) {
+                    Toast.makeText(this, message ?: R.string.live_ended, Toast.LENGTH_LONG).show()
+                    currentFeed?.refreshLiveStreams()
+                } else {
+                    val title = stream.title().ifBlank { getString(R.string.live_title) }
+                    val block = Post.Block(LIVE_BLOCK, title, stream.cover(), stream.sources())
+                    val post = Post(
+                        "", title, stream.author(), stream.slug(), "", 0, true, stream.cover(),
+                        listOf(block), true, true, null,
+                    )
+                    activeVideoPost = null
+                    playerController.open(post, block, true)
+                }
+            },
+            failed = { Toast.makeText(this, it, Toast.LENGTH_LONG).show() },
+        )
     }
 
     private fun openPlayer(post: Post, block: Post.Block, fromStart: Boolean) {

@@ -147,12 +147,49 @@ class ScreenRegressionTest {
         }
     }
 
-    private fun awaitPosition(scenario: ActivityScenario<MainActivity>, minimum: Long) {
+    @Test
+    fun liveHlsJoinsNearTheLiveEdgeInsteadOfAtTheBeginning() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val directory = Files.createTempDirectory(instrumentation.targetContext.cacheDir.toPath(), "live-hls")
+        val playlist = directory.resolve("fixture.m3u8")
+        val segments = directory.resolve("fixture.ts")
+        try {
+            // Synthetic 16-second HLS window, eight two-second segments and no end marker.
+            instrumentation.context.assets.open("live/fixture.m3u8").use { Files.copy(it, playlist) }
+            instrumentation.context.assets.open("live/fixture.ts").use { Files.copy(it, segments) }
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { activity ->
+                    val state = Bundle()
+                    state.putString("builtin_media_id", "live-fixture")
+                    state.putStringArrayList("builtin_urls", arrayListOf(playlist.toUri().toString()))
+                    state.putStringArrayList("builtin_types", arrayListOf("live_hls"))
+                    state.putBoolean("builtin_playing", true)
+                    state.putBoolean("builtin_live", true)
+                    activity.playerController.restoreState(state)
+                    activity.playerController.start()
+                }
+                awaitPosition(scenario, 8_000L, timeoutMs = 25_000L)
+                scenario.onActivity { activity ->
+                    assertTrue(activity.playerController.isLive)
+                    assertTrue(activity.playerController.player?.isCurrentMediaItemLive == true)
+                }
+            }
+        } finally {
+            Files.deleteIfExists(playlist)
+            Files.deleteIfExists(segments)
+            Files.deleteIfExists(directory)
+        }
+    }
+
+    private fun awaitPosition(scenario: ActivityScenario<MainActivity>, minimum: Long, timeoutMs: Long = 8_000L) {
         val ready = AtomicBoolean()
-        val deadline = SystemClock.elapsedRealtime() + 8000
+        var details = ""
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs
         do {
             scenario.onActivity { activity ->
                 val player = activity.playerController.player
+                details = "state=${player?.playbackState}, position=${player?.currentPosition}, " +
+                    "playing=${player?.isPlaying}, error=${player?.playerError?.errorCodeName}"
                 ready.set(
                     player != null &&
                         player.playbackState == Player.STATE_READY &&
@@ -163,6 +200,6 @@ class ScreenRegressionTest {
             if (ready.get()) return
             SystemClock.sleep(50)
         } while (SystemClock.elapsedRealtime() < deadline)
-        fail("Player did not resume at $minimum")
+        fail("Player did not resume at $minimum ($details)")
     }
 }

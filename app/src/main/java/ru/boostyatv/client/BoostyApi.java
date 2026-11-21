@@ -17,8 +17,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 final class BoostyApi {
     static final String ORIGIN = "https://boosty.to";
@@ -170,6 +173,53 @@ final class BoostyApi {
         JSONObject extra = result.optJSONObject("extra");
         String next = extra == null || extra.optBoolean("isLast") ? "" : Post.string(extra, "offset");
         return new Page(Post.parseList(rows, avatars), next.equals(offset) ? "" : next);
+    }
+
+    List<LiveStream> liveStreams(String author) throws Exception {
+        if (author != null) {
+            LiveStream stream = liveStream(author, false);
+            return stream == null ? Collections.emptyList() : Collections.singletonList(stream);
+        }
+        Map<String, LiveStream> streams = new LinkedHashMap<>();
+        Set<String> requested = new HashSet<>();
+        String offset = "";
+        while (requested.add(offset)) {
+            String path = "/v1/feed/video_stream/?limit=24&only_allowed=false";
+            if (!offset.isEmpty()) path += "&offset=" + Uri.encode(offset);
+            JSONObject response;
+            synchronized (this) {
+                response = authenticated(path);
+            }
+            JSONObject data = response.optJSONObject("data");
+            JSONArray rows = data == null ? null : data.optJSONArray("streams");
+            if (rows != null) {
+                for (int i = 0; i < rows.length(); i++) {
+                    LiveStream stream = LiveStream.parse(rows.optJSONObject(i), "", false);
+                    if (stream != null) streams.putIfAbsent(stream.slug(), stream);
+                }
+            }
+            JSONObject extra = response.optJSONObject("extra");
+            offset = extra == null || extra.optBoolean("isLast") ? "" : Post.string(extra, "offset");
+            if (offset.isEmpty()) break;
+        }
+        return new ArrayList<>(streams.values());
+    }
+
+    synchronized LiveStream liveStream(String author, boolean playback) throws Exception {
+        String path = "/v1/blog/" + Uri.encode(author) + "/video_stream?from=" + (playback ? "layer" : "blog");
+        try {
+            return LiveStream.parse(authenticated(path), author, playback);
+        } catch (HttpError error) {
+            if (error.status == 404) return null;
+            throw error;
+        }
+    }
+
+    synchronized long liveHeartbeat(String author, boolean stop) throws Exception {
+        String path = "/v1/blog/" + Uri.encode(author) + "/video_stream/heartbeat/viewer"
+            + (stop ? "?stop=true" : "?immortal=false&autoplay=false");
+        JSONObject data = authenticated("PUT", path, null).optJSONObject("data");
+        return data == null ? 30 : data.optLong("nextRequestInterval", 30);
     }
 
     synchronized List<Tag> tags(String author) throws Exception {
