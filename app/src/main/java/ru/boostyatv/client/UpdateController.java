@@ -185,7 +185,7 @@ final class UpdateController {
             try {
                 activity.startActivity(new Intent(Intent.ACTION_VIEW)
                     .setDataAndType(uri, "application/vnd.android.package-archive")
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK));
                 statusMessage = activity.getString(R.string.update_install_confirm);
                 emit();
             } catch (ActivityNotFoundException e) {
