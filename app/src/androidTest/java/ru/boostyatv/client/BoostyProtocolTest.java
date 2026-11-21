@@ -206,7 +206,7 @@ public final class BoostyProtocolTest {
                 if (path.startsWith("/v1/blog/author/post/tag/")) {
                     return new JSONObject("{\"data\":[{\"id\":1,\"title\":\"First tag\"}]}");
                 }
-                if (path.equals("/v1/blog/author/post/?limit=18&comments_limit=0&is_only_allowed=true&tags_ids=1")) {
+                if (path.equals("/v1/blog/author/post/?limit=24&comments_limit=0&is_only_allowed=true&tags_ids=1")) {
                     return new JSONObject("{\"data\":[{\"id\":\"test-post\"}],\"extra\":{\"isLast\":true}}");
                 }
                 if (path.equals("/v1/blog/author/post/test-post?comments_limit=0")) {
