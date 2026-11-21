@@ -262,4 +262,9 @@
     <string name="post_download_title">Download video</string>
     <string name="post_download_started">Download started (%1$s)</string>
     <string name="post_download_failed">Failed to start download.</string>
+    <string name="about_support_title">Support the project</string>
+    <string name="about_support_tbank">T-Bank donations</string>
+    <string name="about_support_ozon">Ozon donations</string>
+    <string name="about_support_subtitle">Via SBP or any bank card</string>
+    <string name="about_support_action">Support →</string>
 </resources>

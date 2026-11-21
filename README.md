@@ -12,8 +12,9 @@
 
 ## Возможности
 
-- Лента подписок с автоматической подгрузкой, полками «Ваши каналы» и «Продолжить просмотр» и отдельным режимом «Видео». На телефоне разделы переключаются нижней навигацией, лента обновляется свайпом вниз; на Android TV слева доступна сворачиваемая панель навигации (Navigation Rail), безрамочные 16:9 карточки со свечением в фокусе, сетка каналов и карточная история просмотра. Внутри канала есть поиск видео по названию и фильтр по тегам.
-- Встроенный плеер с собственным HUD и выдвижной боковой панелью настроек. В ней доступны качество, скорость, аудиодорожки, субтитры, размер кадра, точная перемотка (`−10 с / +10 с` и переход ко времени) и статистика потоков. Поддерживаются HLS, DASH и MP4. Воспроизведение продолжается в фоне, управление доступно из медиа-уведомления.
+- Лента подписок с плавным скроллингом и упреждающей подгрузкой обложек, полками «Ваши каналы» и «Продолжить просмотр» и отдельным режимом «Видео». На телефоне разделы переключаются нижней навигацией, лента обновляется свайпом вниз; на Android TV слева доступна сворачиваемая панель навигации (Navigation Rail), плавное выравнивание фокуса под пульт, безрамочные 16:9 карточки со свечением, сетка каналов и карточная история просмотра. Внутри канала есть поиск видео по названию и фильтр по тегам.
+- Встроенный плеер Media3 с собственным HUD, обратным буфером для быстрой перемотки и выдвижной боковой панелью настроек: качество, скорость, аудиодорожки, субтитры, размер кадра, переход ко времени и статистика потоков. Поддерживаются HLS, DASH и MP4. Воспроизведение продолжается в фоне, управление доступно из медиа-уведомления.
+- Скачивание видео с выбором качества (от 144p до 4K) на экране публикации через системный `DownloadManager` в папку `Downloads/Boosty ATV`.
 - Новая тёмная и OLED-тема с чёрным фоном и динамическим ambient-свечением из обложек. Переключатель в настройках применяет OLED-тему мгновенно без перезапуска экрана.
 - Современный интерфейс на Kotlin и Jetpack Compose со шрифтом Golos Text, скелетонами загрузки и едиными тёмными диалогами и боковыми панелями.
 - Сохранение позиции просмотра на устройстве и синхронизация с Boosty. На карточках видео видны длительность и прогресс.
@@ -45,11 +46,11 @@
 
 - `BoostyTheme.kt`, `BoostyComponents.kt`, `AppShellCompose.kt` — цветовая палитра (тёмная / OLED), шрифт Golos Text, общие компоненты, боковые панели/диалоги и оболочка навигации (сворачиваемый Navigation Rail на ТВ / нижняя панель на телефоне).
 - `FeedScreenCompose.kt`, `AuthorsScreenCompose.kt`, `HistoryScreenCompose.kt` — лента с полками «Ваши каналы» и «Продолжить просмотр», пагинацией и фильтрами; сетка каналов и карточная история.
-- `PostScreenCompose.kt` — экран публикации с фоновым бэкдропом, комментариями и пикером реакций.
+- `PostScreenCompose.kt`, `VideoDownloader.kt` — экран публикации с фоновым бэкдропом, комментариями, пикером реакций и скачиванием видео с выбором качества через `DownloadManager`.
 - `PlayerScreenCompose.kt` — контроллер Media3 против `PlaybackService`, кастомный HUD и выдвижное меню настроек плеера.
 - `LoginScreenCompose.kt` — экран QR-сопряжения на ТВ, вход по номеру телефона, выбор страны и обёртка над `BoostyWebLogin`.
-- `SettingsScreenCompose.kt`, `AccountScreenCompose.kt`, `AboutScreenCompose.kt`, `UpdateDialogsCompose.kt` — настройки, профиль, экран «О программе» и диалоги обновлений.
-- `BoostyApi`, `SessionStore`, `WatchHistory`, `TvPairing`, `PlaybackService`, `Artwork`, `UpdateController`, `Post`, `Reactions`, `FeedFilter`, `TimeFormat`, `AppExecutors` — API, кэш обложек и ambient-цветов, локальное хранилище, обновления и протокол сопряжения.
+- `SettingsScreenCompose.kt`, `AccountScreenCompose.kt`, `AboutScreenCompose.kt`, `UpdateDialogsCompose.kt` — настройки, профиль, экран «О программе» и прокручиваемые диалоги обновлений с рендерингом Markdown.
+- `BoostyApi`, `SessionStore`, `WatchHistory`, `TvPairing`, `PlaybackService`, `Artwork`, `UpdateController`, `Post`, `Reactions`, `FeedFilter`, `TimeFormat`, `AppExecutors` — API, кэш и prefetch обложек, ambient-цвета, локальное хранилище, обновления и протокол сопряжения.
 
 ## Сборка
 
@@ -87,10 +88,10 @@ keyPassword=...
 Те же значения можно передать переменными окружения `BOOSTY_KEYSTORE`, `BOOSTY_KEYSTORE_PASSWORD`, `BOOSTY_KEY_ALIAS` и `BOOSTY_KEY_PASSWORD`. Версию можно переопределить без правки `build.gradle`:
 
 ```powershell
-.\gradlew.bat :app:assembleRelease -PversionCode=2000000 -PversionName=2.0.0
+.\gradlew.bat :app:assembleRelease -PversionCode=2002000 -PversionName=2.2.0
 ```
 
-Пуш тега `v2.0.0` запускает [workflow релиза](.github/workflows/release.yml): он считает `versionCode` как `major * 1 000 000 + minor * 1 000 + patch` (minor и patch — до 999), собирает подписанный APK из секретов и публикует GitHub-релиз.
+Пуш тега `v2.2.0` запускает [workflow релиза](.github/workflows/release.yml): он считает `versionCode` как `major * 1 000 000 + minor * 1 000 + patch` (minor и patch — до 999), собирает подписанный APK из секретов и публикует GitHub-релиз.
 
 В качестве референсов использованы [BoostBuddy](https://github.com/slartus/BoostBuddy), [BoostyVP](https://github.com/rico-x/BoostyVP) и [boosty-tv-app](https://github.com/ARDcode/boosty-tv-app).
 
