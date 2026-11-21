@@ -134,7 +134,7 @@ final class BoostyApi {
 
     synchronized Page posts(String author, String offset, String search, String tags) throws Exception {
         String path = author == null ? "/v1/feed/post/" : "/v1/blog/" + Uri.encode(author) + "/post/";
-        String query = "?limit=18&comments_limit=0&" + (author == null ? "only_allowed" : "is_only_allowed") + "=true";
+        String query = "?limit=24&comments_limit=0&" + (author == null ? "only_allowed" : "is_only_allowed") + "=true";
         boolean searching = author != null && !search.isEmpty();
         if (searching) {
             path = "/v1/search/blog/post/";

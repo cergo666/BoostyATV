@@ -66,14 +66,35 @@ record Post(String id, String title, String author, String slug, String authorAv
         return title.isEmpty() ? context.getString(R.string.post_untitled) : title;
     }
 
+    private static final ThreadLocal<Locale> FORMAT_LOCALE = new ThreadLocal<>();
+    private static final ThreadLocal<DateFormat> DATE_FORMAT = new ThreadLocal<>();
+    private static final ThreadLocal<NumberFormat> INT_FORMAT = new ThreadLocal<>();
+
+    private static DateFormat dateFormat(Locale locale) {
+        DateFormat cached = DATE_FORMAT.get();
+        if (cached != null && locale.equals(FORMAT_LOCALE.get())) return cached;
+        FORMAT_LOCALE.set(locale);
+        DateFormat fresh = DateFormat.getDateInstance(DateFormat.MEDIUM, locale);
+        DATE_FORMAT.set(fresh);
+        INT_FORMAT.set(NumberFormat.getIntegerInstance(locale));
+        return fresh;
+    }
+
+    private static NumberFormat intFormat(Locale locale) {
+        NumberFormat cached = INT_FORMAT.get();
+        if (cached != null && locale.equals(FORMAT_LOCALE.get())) return cached;
+        dateFormat(locale);
+        return INT_FORMAT.get();
+    }
+
     String displayMetadata(Context context) {
         Locale locale = context.getResources().getConfiguration().getLocales().get(0);
         List<String> parts = new ArrayList<>(2);
         if (published > 0) {
-            parts.add(DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(new Date(published * 1000L)));
+            parts.add(dateFormat(locale).format(new Date(published * 1000L)));
         }
         if (views >= 0) {
-            parts.add(context.getString(R.string.post_view_count, NumberFormat.getIntegerInstance(locale).format(views)));
+            parts.add(context.getString(R.string.post_view_count, intFormat(locale).format(views)));
         }
         return String.join("  ·  ", parts);
     }

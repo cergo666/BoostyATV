@@ -35,8 +35,8 @@ final class Artwork {
     static final int AVATAR = 128;
     static final int THUMBNAIL = 480;
     static final int PREVIEW = 1080;
-    private static final int MAX_CACHE = 24 * 1024 * 1024;
-    private static final long MAX_DISK_CACHE = 128L * 1024 * 1024;
+    private static final int MAX_CACHE = 96 * 1024 * 1024;
+    private static final long MAX_DISK_CACHE = 160L * 1024 * 1024;
     private static final int MAX_IMAGE_BYTES = 12 * 1024 * 1024;
     private static final long DISK_TOUCH_INTERVAL_MS = 60 * 60 * 1000L;
     private static final long FAILURE_TTL_MS = 60_000;
@@ -47,8 +47,9 @@ final class Artwork {
         Arrays.setAll(DISK_LOCKS, ignored -> new Object());
     }
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final ExecutorService workers = AppExecutors.network("artwork", 4);
-    private final ExecutorService featured = AppExecutors.network("featured-artwork", 1);
+    private final ExecutorService workers = AppExecutors.network("artwork",
+        Math.max(4, Math.min(6, Runtime.getRuntime().availableProcessors())));
+    private final ExecutorService featured = AppExecutors.network("featured-artwork", 2);
     private record Request(String url, int size) {}
     private final Map<Request, CompletableFuture<Bitmap>> inFlight = new ConcurrentHashMap<>();
     private final Map<String, Long> failures = new ConcurrentHashMap<>();
@@ -73,6 +74,18 @@ final class Artwork {
         if (exact != null) return exact;
         if (size == PREVIEW) return cache.get(new Request(url, THUMBNAIL));
         return null;
+    }
+
+    /** Warms the disk and memory cache ahead of scroll without waking the main thread. */
+    void prefetch(String url, int size) {
+        if (url == null || url.isEmpty() || workers.isShutdown()) return;
+        Request request = new Request(url, size);
+        if (cache.get(request) != null) return;
+        Long failedAt = failures.get(url);
+        if (failedAt != null && System.currentTimeMillis() - failedAt < FAILURE_TTL_MS) return;
+        CompletableFuture<Bitmap> future = inFlight.computeIfAbsent(request,
+            key -> CompletableFuture.supplyAsync(() -> loadAndCache(key), workers));
+        future.whenComplete((bitmap, ignored) -> inFlight.remove(request, future));
     }
 
     void loadBitmap(String url, int size, boolean priority, Consumer<Bitmap> onResult) {
@@ -178,7 +191,7 @@ final class Artwork {
 
     private static int cacheSize() {
         long max = Runtime.getRuntime().maxMemory();
-        return (int) Math.min(MAX_CACHE, Math.max(4L * 1024 * 1024, max / 8));
+        return (int) Math.min(MAX_CACHE, Math.max(8L * 1024 * 1024, max / 4));
     }
 
     /** Memory miss: try the disk copy first, then download and remember it. */

@@ -4,7 +4,9 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import androidx.media3.common.C;
 import androidx.media3.common.AudioAttributes;
+import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.SeekParameters;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.datasource.DefaultHttpDataSource;
@@ -31,9 +33,22 @@ public final class PlaybackService extends MediaSessionService {
         headers.put("Referer", BoostyApi.ORIGIN + "/");
         DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory()
             .setDefaultRequestProperties(headers);
-        player = new ExoPlayer.Builder(this).setMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(this, http)))
-            .setSeekBackIncrementMs(10_000).setSeekForwardIncrementMs(10_000).build();
-        player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.EXACT);
+        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
+                DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,
+                1_000,
+                1_500
+            )
+            .setBackBuffer(30_000, true)
+            .build();
+        player = new ExoPlayer.Builder(this)
+            .setMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(this, http)))
+            .setLoadControl(loadControl)
+            .setSeekBackIncrementMs(10_000)
+            .setSeekForwardIncrementMs(10_000)
+            .build();
+        player.setSeekParameters(new SeekParameters(2_000_000L, 2_000_000L));
         player.setWakeMode(C.WAKE_MODE_LOCAL);
         player.setAudioAttributes(AudioAttributes.DEFAULT, true);
         player.setHandleAudioBecomingNoisy(true);

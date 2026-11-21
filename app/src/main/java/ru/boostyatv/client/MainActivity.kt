@@ -349,33 +349,6 @@ class MainActivity : ComponentActivity() {
             is AppRoute.ChannelFeed -> tvMode
             else -> false
         }
-        val activeAmbientUrl = when (route) {
-            is AppRoute.PostDetail -> route.post.cover()
-            AppRoute.Home, is AppRoute.ChannelFeed -> focusedCoverUrl
-            else -> ""
-        }
-        val defaultAccent = BoostyTheme.palette.accent
-        var ambientColor by remember { mutableStateOf(defaultAccent) }
-        var latestAmbientUrl by remember { mutableStateOf("") }
-        latestAmbientUrl = activeAmbientUrl
-
-        LaunchedEffect(activeAmbientUrl, oledEnabled, defaultAccent) {
-            if (oledEnabled || activeAmbientUrl.isEmpty()) {
-                ambientColor = defaultAccent
-                return@LaunchedEffect
-            }
-            val cached = artwork.cachedAmbientColor(activeAmbientUrl)
-            if (cached != null) {
-                ambientColor = Color(cached)
-            } else {
-                val targetUrl = activeAmbientUrl
-                artwork.loadAmbientColor(targetUrl) { argb ->
-                    if (latestAmbientUrl == targetUrl) {
-                        ambientColor = Color(argb)
-                    }
-                }
-            }
-        }
 
         Box(modifier = Modifier.fillMaxSize()) {
             if (playerController.active) {
@@ -395,7 +368,37 @@ class MainActivity : ComponentActivity() {
                         showNavigation = showNav,
                         oled = oledEnabled,
                         onSelectTab = ::selectTab,
-                        ambientColor = ambientColor,
+                        backdrop = {
+                            if (!oledEnabled) {
+                                val defaultAccent = BoostyTheme.palette.accent
+                                val activeAmbientUrl = when (route) {
+                                    is AppRoute.PostDetail -> route.post.cover()
+                                    AppRoute.Home, is AppRoute.ChannelFeed -> focusedCoverUrl
+                                    else -> ""
+                                }
+                                var ambientColor by remember { mutableStateOf(defaultAccent) }
+                                LaunchedEffect(activeAmbientUrl, defaultAccent) {
+                                    if (activeAmbientUrl.isEmpty()) {
+                                        ambientColor = defaultAccent
+                                        return@LaunchedEffect
+                                    }
+                                    // Debounce rapid D-Pad scrolling so ambient extraction never stalls frames
+                                    kotlinx.coroutines.delay(220L)
+                                    val cached = artwork.cachedAmbientColor(activeAmbientUrl)
+                                    if (cached != null) {
+                                        ambientColor = Color(cached)
+                                    } else {
+                                        val targetUrl = activeAmbientUrl
+                                        artwork.loadAmbientColor(targetUrl) { argb ->
+                                            if (focusedCoverUrl == targetUrl || (route as? AppRoute.PostDetail)?.post?.cover() == targetUrl) {
+                                                ambientColor = Color(argb)
+                                            }
+                                        }
+                                    }
+                                }
+                                AmbientBackdrop(oled = false, accentColor = ambientColor)
+                            }
+                        },
                     ) {
                         when (route) {
                             AppRoute.Login -> LoginScreenView(
