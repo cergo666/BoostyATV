@@ -112,4 +112,10 @@ keyPassword=...
 
 ## История звёзд
 
-[![График звёзд](https://api.star-history.com/svg?repos=cergo666/BoostyATV&type=Date)](https://star-history.com/#cergo666/BoostyATV&Date)
+<a href="https://www.star-history.com/?repos=cergo666%2FBoostyATV&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=cergo666/BoostyATV&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=cergo666/BoostyATV&type=date&legend=top-left" />
+   <img alt="График звёзд" src="https://api.star-history.com/chart?repos=cergo666/BoostyATV&type=date&legend=top-left" />
+ </picture>
+</a>
