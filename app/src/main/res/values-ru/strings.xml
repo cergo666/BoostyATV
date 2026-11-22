@@ -28,7 +28,7 @@
     <string name="login_action_change_number">Изменить номер</string>
     <string name="login_action_resend">Выслать снова</string>
     <string name="login_action_cancel_pair">Отменить подключение</string>
-    <string name="login_action_social">Через соцсеть</string>
+    <string name="login_action_social">Почта или соцсеть</string>
     <string name="login_error_select_country">Выберите страну и введите номер или вставьте полный номер с +.</string>
     <string name="login_error_code_format">Введите 6 цифр из сообщения.</string>
     <string name="login_error_not_sent">Boosty не подтвердил отправку кода.</string>
@@ -43,7 +43,7 @@
     <string name="login_pair_title">Вход на телевизоре</string>
     <string name="login_pair_transfer_current">Передать текущий вход</string>
     <string name="login_pair_by_phone">По номеру телефона</string>
-    <string name="login_pair_via_social">Через соцсеть на сайте</string>
+    <string name="login_pair_via_social">Почта или соцсеть на сайте</string>
     <string name="login_pair_confirm_title">Передать вход на ТВ?</string>
     <string name="login_pair_confirm_message">Телевизор получит временный доступ к вашему аккаунту Boosty. Когда срок доступа истечёт, его можно передать снова.</string>
     <string name="login_pair_confirm_grant">Передать</string>
@@ -64,7 +64,7 @@
     <string name="login_web_no_session">На boosty.to ещё нет активной сессии. Войдите на сайте и нажмите кнопку снова.</string>
     <string name="login_web_return">Завершите вход и дождитесь возврата на boosty.to.</string>
     <string name="login_web_unsupported_site">Этот сайт не входит в поддерживаемые страницы входа Boosty.</string>
-    <string name="login_web_google_browser">Google требует системный браузер. Для входа в Boosty ATV можно использовать привязанный номер телефона.</string>
+    <string name="login_google_unavailable">Вход через Google в Boosty ATV пока недоступен. Для его подключения нужно разрешение Boosty.</string>
     <string name="login_web_session_incomplete">Сайт ещё не завершил вход в Boosty.</string>
     <string name="login_delivery_sms">Boosty выбрал SMS. Проверьте сообщения на телефоне.</string>
     <string name="login_delivery_telegram">Boosty выбрал Telegram. Проверьте сообщения от бота Boosty.</string>
@@ -328,4 +328,9 @@
     <string name="live_no_source">Boosty пока не предоставил поток. Попробуйте немного позже.</string>
     <string name="live_playback_failed">Воспроизведение прервалось. Эфир мог закончиться или связь могла пропасть.</string>
     <string name="live_reload_failed">Не удалось загрузить эфиры. Повторить</string>
+    <string name="post_playlist_title">Плейлист</string>
+    <string name="post_playlist_position">%1$d из %2$d</string>
+    <string name="post_playlist_untitled">Видео %1$d</string>
+    <string name="player_open_playlist">Открыть плейлист, %1$s</string>
+    <string name="player_previous_video">Предыдущее видео</string>
 </resources>

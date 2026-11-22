@@ -716,6 +716,7 @@ internal fun BoostyOverlaySheet(
     onDismiss: () -> Unit,
     subtitle: String? = null,
     footer: (@Composable RowScope.() -> Unit)? = null,
+    scrollContent: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val palette = BoostyTheme.palette
@@ -803,7 +804,7 @@ internal fun BoostyOverlaySheet(
                     Column(
                         modifier = Modifier
                             .weight(1f, fill = isTv)
-                            .verticalScroll(rememberScrollState()),
+                            .then(if (scrollContent) Modifier.verticalScroll(rememberScrollState()) else Modifier),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         content = content,
                     )
@@ -833,6 +834,7 @@ internal fun BoostySheetOption(
     trailingText: String? = null,
     danger: Boolean = false,
     focusRequester: FocusRequester? = null,
+    leading: (@Composable () -> Unit)? = null,
 ) {
     val palette = BoostyTheme.palette
     var focused by remember { mutableStateOf(false) }
@@ -866,7 +868,10 @@ internal fun BoostySheetOption(
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (iconRes != null) {
+        if (leading != null) {
+            leading()
+            Spacer(Modifier.width(12.dp))
+        } else if (iconRes != null) {
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,

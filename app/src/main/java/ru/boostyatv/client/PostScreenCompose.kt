@@ -119,6 +119,7 @@ internal fun PostScreenView(
     onToggleWatched: (Post.Block, Boolean) -> Unit = { _, _ -> },
     onBack: () -> Unit,
     onOpenPlayer: (Post, Post.Block, Boolean) -> Unit,
+    onPlayFromPlaylist: (Post, Post.Block) -> Unit,
     onOpenTag: (Post, BoostyApi.Tag) -> Unit,
 ) {
     val context = LocalContext.current
@@ -126,6 +127,8 @@ internal fun PostScreenView(
     val palette = BoostyTheme.palette
     val isTv = BoostyTheme.isTv
     val scope = rememberCoroutineScope()
+    val playlist = remember(post) { PostPlaylist.videos(post) }
+    var showPlaylist by rememberSaveable(post.id()) { mutableStateOf(false) }
 
     val hasComments = post.allowed() && !post.commentsDenied() && post.slug().isNotEmpty()
     val localReactions = remember(post.id()) { mutableStateMapOf<String, Reactions>() }
@@ -295,6 +298,7 @@ internal fun PostScreenView(
                             onOpenPlayer = onOpenPlayer,
                             onOpenTag = onOpenTag,
                             onToggleWatched = onToggleWatched,
+                            onOpenPlaylist = if (playlist.size > 1) ({ showPlaylist = true }) else null,
                             onOpenReactionPicker = ::requestReactionPicker,
                         )
                         Spacer(Modifier.height(24.dp))
@@ -444,6 +448,7 @@ internal fun PostScreenView(
                                 onOpenPlayer = onOpenPlayer,
                                 onOpenTag = onOpenTag,
                                 onToggleWatched = onToggleWatched,
+                                onOpenPlaylist = if (playlist.size > 1) ({ showPlaylist = true }) else null,
                                 onOpenReactionPicker = ::requestReactionPicker,
                             )
                         }
@@ -536,6 +541,18 @@ internal fun PostScreenView(
                 }
             }
         }
+    }
+
+    if (showPlaylist && playlist.size > 1) {
+        PostPlaylistSheet(
+            videos = playlist,
+            currentIndex = null,
+            onSelect = { index ->
+                showPlaylist = false
+                onPlayFromPlaylist(post, playlist[index])
+            },
+            onDismiss = { showPlaylist = false },
+        )
     }
 
     commentComposerParent?.let { parentId ->
@@ -745,6 +762,7 @@ private fun PostArticleContent(
     onOpenPlayer: (Post, Post.Block, Boolean) -> Unit,
     onOpenTag: (Post, BoostyApi.Tag) -> Unit,
     onToggleWatched: (Post.Block, Boolean) -> Unit,
+    onOpenPlaylist: (() -> Unit)?,
     onOpenReactionPicker: (String, Reactions) -> Unit,
 ) {
     val palette = BoostyTheme.palette
@@ -780,6 +798,15 @@ private fun PostArticleContent(
                 playFocusRequester = primaryPlayFocus,
                 onOpenPlayer = onOpenPlayer,
                 onToggleWatched = onToggleWatched,
+            )
+        }
+
+        if (onOpenPlaylist != null) {
+            BoostyButton(
+                text = stringResource(R.string.post_playlist_title),
+                iconRes = R.drawable.ic_playlist,
+                primary = false,
+                onClick = onOpenPlaylist,
             )
         }
 

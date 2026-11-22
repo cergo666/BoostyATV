@@ -119,6 +119,7 @@ internal interface PlayerHostCallbacks {
     fun onProgressUpdated()
     fun onPlayerOpened()
     fun onPlayerClosed()
+    fun onVideoEnded()
 }
 
 private enum class PlayerMenuPage {
@@ -214,7 +215,8 @@ internal class PlayerSessionController(
     private var videoFormat: Format? = null
     private var audioFormat: Format? = null
     private var reconnectAttempted = false
-    private var mediaId: String = ""
+    var mediaId: String = ""
+        private set
 
     private val savePlaybackTick = object : Runnable {
         override fun run() {
@@ -240,11 +242,13 @@ internal class PlayerSessionController(
 
     fun hasVideo(): Boolean = video != null
 
-    fun open(post: Post, block: Post.Block, fromStart: Boolean) {
+    fun open(post: Post, block: Post.Block, fromStart: Boolean, forceBuiltIn: Boolean = false) {
         val live = block.kind() == LIVE_BLOCK
         val app = callbacks.playbackOptions.player()
         val position = if (fromStart || live) 0L else callbacks.watchHistory.get(block).resume()
-        if (!live && app != PlaybackOptions.App.BUILT_IN && launchExternal(block, app, position)) return
+        if (!active && !live && !forceBuiltIn && app != PlaybackOptions.App.BUILT_IN &&
+            launchExternal(block, app, position)) return
+        savePlayback()
         video = block
         isLive = live
         videoTitle = block.text().ifBlank { post.displayTitle(activity) }
@@ -253,7 +257,7 @@ internal class PlayerSessionController(
         mediaId = UUID.randomUUID().toString()
         reconnectAttempted = false
         playbackError = false
-        requestNotificationPermission()
+        if (!active) requestNotificationPermission()
         playbackSpeed = if (isLive) 1f else callbacks.playbackOptions.speedFor(videoAuthorSlug)
         resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
         videoFormat = null
@@ -266,10 +270,20 @@ internal class PlayerSessionController(
         lastWrittenTime = -1L
         playbackStarted = false
         resumePlayback = true
+        isPlaying = false
+        isBuffering = true
         active = true
         fullscreen(true)
         callbacks.onPlayerOpened()
-        startPlayer()
+        val controller = player
+        if (controller == null) {
+            startPlayer()
+        } else {
+            controller.setPlaybackSpeed(playbackSpeed)
+            applyQualityLimit(controller)
+            prepareSource(controller)
+            scheduleTicks()
+        }
     }
 
     fun restoreState(savedState: Bundle?) {
@@ -592,7 +606,18 @@ internal class PlayerSessionController(
                 isBuffering = state == Player.STATE_BUFFERING
                 if (state == Player.STATE_READY) playbackStarted = true
                 else if (state == Player.STATE_ENDED) {
-                    if (isLive) playbackError = true else savePlayback()
+                    if (isLive) {
+                        playbackError = true
+                    } else {
+                        savePlayback()
+                        val completedId = mediaId
+                        handler.post {
+                            if (player === controller && mediaId == completedId &&
+                                controller.currentMediaItem?.mediaId == completedId &&
+                                controller.playWhenReady && controller.playbackState == Player.STATE_ENDED
+                            ) callbacks.onVideoEnded()
+                        }
+                    }
                 }
             }
 
@@ -677,7 +702,7 @@ internal class PlayerSessionController(
     private fun savePlayback() {
         val controller = player ?: return
         val currentVideo = video ?: return
-        if (isLive || !playbackStarted) return
+        if (isLive || !playbackStarted || controller.currentMediaItem?.mediaId != mediaId) return
         val duration = if (controller.duration > 0L) controller.duration else currentVideo.durationMs()
         val position = if (controller.playbackState == Player.STATE_ENDED && duration > 0L) {
             duration
@@ -830,6 +855,9 @@ internal fun PlayerScreenView(
     controller: PlayerSessionController,
     options: PlaybackOptions,
     inPictureInPicture: Boolean = false,
+    playlist: PostPlaylist? = null,
+    onSelectPlaylistVideo: (Int) -> Unit = {},
+    onPlayPrevious: (() -> Unit)? = null,
     onPlayNext: (() -> Unit)? = null,
     onRetryLive: (() -> Unit)? = null,
     onBack: () -> Unit,
@@ -843,6 +871,7 @@ internal fun PlayerScreenView(
     var interactionNonce by remember { mutableIntStateOf(0) }
     var menuPage by remember { mutableStateOf<PlayerMenuPage?>(null) }
     var showSeekTimeDialog by remember { mutableStateOf(false) }
+    var showPlaylist by remember { mutableStateOf(false) }
     var seekError by remember { mutableStateOf<String?>(null) }
     var transientFeedback by remember { mutableStateOf<String?>(null) }
     var feedbackNonce by remember { mutableIntStateOf(0) }
@@ -877,8 +906,8 @@ internal fun PlayerScreenView(
     }
 
     // Auto-hide HUD while playing
-    LaunchedEffect(controlsVisible, interactionNonce, controller.isPlaying, menuPage, showSeekTimeDialog) {
-        if (controlsVisible && controller.isPlaying && menuPage == null && !showSeekTimeDialog) {
+    LaunchedEffect(controlsVisible, interactionNonce, controller.isPlaying, menuPage, showSeekTimeDialog, showPlaylist) {
+        if (controlsVisible && controller.isPlaying && menuPage == null && !showSeekTimeDialog && !showPlaylist) {
             delay(if (isTv) 7000L else 4500L)
             controlsVisible = false
         }
@@ -892,8 +921,8 @@ internal fun PlayerScreenView(
         }
     }
 
-    LaunchedEffect(controlsVisible, menuPage, showSeekTimeDialog, controller.isBuffering) {
-        if (isTv && menuPage == null && !showSeekTimeDialog) {
+    LaunchedEffect(controlsVisible, menuPage, showSeekTimeDialog, showPlaylist, controller.isBuffering) {
+        if (isTv && menuPage == null && !showSeekTimeDialog && !showPlaylist) {
             if (controlsVisible && !controller.isBuffering) {
                 withFrameNanos { }
                 runCatching { playButtonFocus.requestFocus() }
@@ -916,7 +945,7 @@ internal fun PlayerScreenView(
             .onPreviewKeyEvent { keyEvent ->
                 val native = keyEvent.nativeKeyEvent
                 val code = native.keyCode
-                if (menuPage != null || showSeekTimeDialog) return@onPreviewKeyEvent false
+                if (menuPage != null || showSeekTimeDialog || showPlaylist) return@onPreviewKeyEvent false
 
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     when (code) {
@@ -941,6 +970,14 @@ internal fun PlayerScreenView(
                             controller.player?.pause()
                             bumpControls()
                             return@onPreviewKeyEvent true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                            val action = if (code == KeyEvent.KEYCODE_MEDIA_PREVIOUS) onPlayPrevious else onPlayNext
+                            if (action != null && native.repeatCount == 0) {
+                                action()
+                                bumpControls()
+                            }
+                            return@onPreviewKeyEvent action != null
                         }
                         KeyEvent.KEYCODE_MEDIA_REWIND -> {
                             if (controller.isLive) return@onPreviewKeyEvent true
@@ -1132,6 +1169,10 @@ internal fun PlayerScreenView(
                             containerColor = Color(0x88151720),
                         )
                     }
+                    val playlistPosition = playlist?.let {
+                        stringResource(R.string.post_playlist_position, it.currentIndex + 1, it.videos.size)
+                    }
+                    val subtitle = listOfNotNull(controller.videoAuthor.ifBlank { null }, playlistPosition).joinToString(" · ")
                     Column(modifier = Modifier.weight(1f)) {
                         if (controller.videoTitle.isNotEmpty()) {
                             Text(
@@ -1142,15 +1183,24 @@ internal fun PlayerScreenView(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        if (controller.videoAuthor.isNotEmpty()) {
+                        if (subtitle.isNotEmpty()) {
                             Text(
-                                text = controller.videoAuthor,
+                                text = subtitle,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Color.White.copy(alpha = 0.72f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
+                    }
+
+                    if (playlist != null) {
+                        BoostyIconButton(
+                            iconRes = R.drawable.ic_playlist,
+                            contentDescription = stringResource(R.string.player_open_playlist, playlistPosition.orEmpty()),
+                            onClick = { showPlaylist = true },
+                            containerColor = Color(0x88151720),
+                        )
                     }
 
                     if (kotlin.math.abs(controller.playbackSpeed - 1f) > 0.01f) {
@@ -1184,9 +1234,22 @@ internal fun PlayerScreenView(
                 if (!controller.isBuffering) {
                     Row(
                         modifier = Modifier.align(Alignment.Center),
-                        horizontalArrangement = Arrangement.spacedBy(if (isTv) 28.dp else 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(if (isTv) 28.dp else 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        if (onPlayPrevious != null) {
+                            PlayerTransportButton(
+                                iconRes = R.drawable.ic_skip_previous,
+                                contentDescription = stringResource(R.string.player_previous_video),
+                                size = if (isTv) 50.dp else 40.dp,
+                                iconSize = 24.dp,
+                                primary = false,
+                                onClick = {
+                                    onPlayPrevious()
+                                    bumpControls()
+                                }
+                            )
+                        }
                         if (!controller.isLive) PlayerTransportButton(
                             iconRes = R.drawable.ic_replay_10,
                             contentDescription = stringResource(R.string.player_seek_back_10),
@@ -1300,6 +1363,22 @@ internal fun PlayerScreenView(
                 }
             }
         }
+    }
+
+    if (showPlaylist && playlist != null && !inPictureInPicture) {
+        PostPlaylistSheet(
+            videos = playlist.videos,
+            currentIndex = playlist.currentIndex,
+            onSelect = { index ->
+                showPlaylist = false
+                onSelectPlaylistVideo(index)
+                bumpControls()
+            },
+            onDismiss = {
+                showPlaylist = false
+                bumpControls()
+            },
+        )
     }
 
     // Modern right-side Player Settings Sheet (replaces all legacy AlertDialogs)

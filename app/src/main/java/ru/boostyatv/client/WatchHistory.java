@@ -79,13 +79,13 @@ final class WatchHistory {
         return result;
     }
 
-    void remember(Post post) {
+    void remember(Post post, Post.Block video) {
         if (post.slug().isEmpty() || post.id().isEmpty()) return;
         synchronized (LOCK) {
             List<RecentPost> posts = recentPosts();
             posts.removeIf(item -> item.slug().equals(post.slug()) && item.id().equals(post.id()));
             posts.add(0, new RecentPost(post.slug(), post.id(), post.title(), post.author(),
-                post.cover(), post.primaryVideoId(), post.primaryDurationMs()));
+                video.image().isEmpty() ? post.cover() : video.image(), video.videoId(), video.durationMs()));
             JSONArray rows = new JSONArray();
             for (RecentPost item : posts.subList(0, Math.min(posts.size(), MAX_RECENT_POSTS))) {
                 rows.put(new JSONArray().put(item.slug()).put(item.id()).put(item.title()).put(item.author())

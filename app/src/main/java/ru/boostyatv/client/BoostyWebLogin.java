@@ -5,7 +5,6 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Message;
-import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -59,7 +58,7 @@ final class BoostyWebLogin extends FrameLayout {
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (!request.isForMainFrame() || allowed(request.getUrl())) return false;
-                showNavigationError(request.getUrl());
+                showNavigationError(view, request.getUrl());
                 return true;
             }
 
@@ -67,7 +66,7 @@ final class BoostyWebLogin extends FrameLayout {
                 Uri uri = Uri.parse(url);
                 if (!allowed(uri)) {
                     view.stopLoading();
-                    showNavigationError(uri);
+                    showNavigationError(view, uri);
                     return;
                 }
                 if (uri.getHost() != null) address.accept(uri.getHost());
@@ -128,8 +127,7 @@ final class BoostyWebLogin extends FrameLayout {
         if (auth.isEmpty() || auth.equals(initialAuth)) return null;
         try {
             return WebSession.parse(auth, cookie(cookies, "_clientId"));
-        } catch (Exception e) {
-            Log.d("BoostyATV", "Web login cookie session is unusable", e);
+        } catch (Exception ignored) {
             return null;
         }
     }
@@ -145,9 +143,14 @@ final class BoostyWebLogin extends FrameLayout {
         return false;
     }
 
-    private void showNavigationError(Uri uri) {
+    private void showNavigationError(WebView view, Uri uri) {
         if ("accounts.google.com".equals(uri.getHost())) {
-            error.accept(getContext().getString(R.string.login_web_google_browser));
+            error.accept(getContext().getString(R.string.login_google_unavailable));
+            if (view == popup) {
+                post(() -> {
+                    if (view == popup) closePopup();
+                });
+            }
         } else {
             error.accept(getContext().getString(R.string.login_web_unsupported_site));
         }

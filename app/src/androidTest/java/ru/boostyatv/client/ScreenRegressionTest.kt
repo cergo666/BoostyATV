@@ -111,13 +111,7 @@ class ScreenRegressionTest {
     fun restoredPlayerJoinsTheExistingSessionAtItsCurrentPosition() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val wav = File.createTempFile("player-regression-", ".wav", context.cacheDir)
-        val data = ByteArray(8000 * 60)
-        val header = ByteBuffer.allocate(44 + data.size).order(ByteOrder.LITTLE_ENDIAN)
-        header.putInt(0x46464952).putInt(36 + data.size).putInt(0x45564157)
-            .putInt(0x20746d66).putInt(16).putShort(1).putShort(1)
-            .putInt(8000).putInt(8000).putShort(1).putShort(8)
-            .putInt(0x61746164).putInt(data.size).put(data)
-        Files.write(wav.toPath(), header.array())
+        writeSilentWav(wav, 60)
         try {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 val state = Bundle()
@@ -181,7 +175,46 @@ class ScreenRegressionTest {
         }
     }
 
-    private fun awaitPosition(scenario: ActivityScenario<MainActivity>, minimum: Long, timeoutMs: Long = 8_000L) {
+    @Test
+    fun postPlaylistAutomaticallyPlaysTheNextVideoInTheSameSession() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val first = File.createTempFile("playlist-first-", ".wav", context.cacheDir)
+        val second = File.createTempFile("playlist-second-", ".wav", context.cacheDir)
+        try {
+            writeSilentWav(first, 2)
+            writeSilentWav(second, 30)
+            val firstVideo = Post.Block("video", "First clip", "", listOf(Post.Source("mp4", first.toURI().toString())))
+            val secondVideo = Post.Block("video", "Second clip", "", listOf(Post.Source("mp4", second.toURI().toString())))
+            val post = Post(
+                "", "Playlist fixture", "", "", "", 0L, true, "",
+                listOf(firstVideo, secondVideo), true, true, null,
+            )
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { it.openPlayer(post, firstVideo, true, forceBuiltIn = true) }
+                awaitPosition(scenario, 100L, timeoutMs = 30_000L, title = "Second clip")
+            }
+        } finally {
+            Files.deleteIfExists(first.toPath())
+            Files.deleteIfExists(second.toPath())
+        }
+    }
+
+    private fun writeSilentWav(file: File, seconds: Int) {
+        val data = ByteArray(8000 * seconds) { 0x80.toByte() }
+        val header = ByteBuffer.allocate(44 + data.size).order(ByteOrder.LITTLE_ENDIAN)
+        header.putInt(0x46464952).putInt(36 + data.size).putInt(0x45564157)
+            .putInt(0x20746d66).putInt(16).putShort(1).putShort(1)
+            .putInt(8000).putInt(8000).putShort(1).putShort(8)
+            .putInt(0x61746164).putInt(data.size).put(data)
+        Files.write(file.toPath(), header.array())
+    }
+
+    private fun awaitPosition(
+        scenario: ActivityScenario<MainActivity>,
+        minimum: Long,
+        timeoutMs: Long = 8_000L,
+        title: String? = null,
+    ) {
         val ready = AtomicBoolean()
         var details = ""
         val deadline = SystemClock.elapsedRealtime() + timeoutMs
@@ -192,6 +225,7 @@ class ScreenRegressionTest {
                     "playing=${player?.isPlaying}, error=${player?.playerError?.errorCodeName}"
                 ready.set(
                     player != null &&
+                        (title == null || activity.playerController.videoTitle == title) &&
                         player.playbackState == Player.STATE_READY &&
                         player.isPlaying &&
                         player.currentPosition >= minimum

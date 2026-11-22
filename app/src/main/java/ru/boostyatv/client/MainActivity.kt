@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
     private var inPictureInPicture by mutableStateOf(false)
     private val retryingDownloads = mutableStateMapOf<Long, Unit>()
     private var savedPosts by mutableStateOf<List<SavedPostsStore.Item>>(emptyList())
-    private var activeVideoPost by mutableStateOf<Post?>(null)
+    private var activePlaylist by mutableStateOf<PostPlaylist?>(null)
     private var busy by mutableStateOf(false)
     private var progressRevision by mutableIntStateOf(0)
     private var profile by mutableStateOf<BoostyApi.Profile?>(null)
@@ -350,7 +350,13 @@ class MainActivity : ComponentActivity() {
                     progressRevision++
                 }
                 override fun onPlayerOpened() = updateBackEnabled()
-                override fun onPlayerClosed() = updateBackEnabled()
+                override fun onPlayerClosed() {
+                    activePlaylist = null
+                    updateBackEnabled()
+                }
+                override fun onVideoEnded() {
+                    activePlaylist?.nextIndex?.let(::playPlaylistItem)
+                }
             },
         )
 
@@ -370,6 +376,7 @@ class MainActivity : ComponentActivity() {
                 showSettings()
             }
             playerController.restoreState(savedInstanceState)
+            restorePlaylist(savedInstanceState)
             handleNotificationIntent(intent)
         } else {
             currentRoute = AppRoute.Login
@@ -437,9 +444,8 @@ class MainActivity : ComponentActivity() {
 
         Box(modifier = Modifier.fillMaxSize()) {
             if (playerController.active) {
-                val nextVideoPost = remember(activeVideoPost, currentFeed?.visible?.size) {
-                    findNextVideoPost(activeVideoPost)
-                }
+                val playlist = activePlaylist?.takeIf { it.videos.size > 1 }
+                val nextVideoPost = if (playlist == null) findNextVideoPost(activePlaylist?.post) else null
                 PlayerScreenView(
                     controller = playerController,
                     options = playbackOptions,
@@ -450,14 +456,11 @@ class MainActivity : ComponentActivity() {
                             openLiveStream(slug)
                         }
                     },
-                    onPlayNext = nextVideoPost?.let { nextPost ->
-                        {
-                            val nextBlock = nextPost.blocks().firstOrNull { it.sources().isNotEmpty() }
-                            if (nextBlock != null) {
-                                openPlayer(nextPost, nextBlock, false)
-                            }
-                        }
-                    },
+                    playlist = playlist,
+                    onSelectPlaylistVideo = ::playPlaylistItem,
+                    onPlayPrevious = playlist?.previousIndex?.let { index -> { playPlaylistItem(index) } },
+                    onPlayNext = playlist?.nextIndex?.let { index -> { playPlaylistItem(index) } }
+                        ?: nextVideoPost?.let { nextPost -> { openPlayer(nextPost, PostPlaylist.videos(nextPost).first(), false) } },
                     onBack = ::back,
                 )
             } else {
@@ -656,7 +659,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 onBack = ::back,
-                                onOpenPlayer = ::openPlayer,
+                                onOpenPlayer = { post, block, fromStart -> openPlayer(post, block, fromStart) },
+                                onPlayFromPlaylist = { post, block -> openPlayer(post, block, false, forceBuiltIn = true) },
                                 onOpenTag = ::showTag,
                             )
                         }
@@ -921,7 +925,7 @@ class MainActivity : ComponentActivity() {
                         "", title, stream.author(), stream.slug(), "", 0, true, stream.cover(),
                         listOf(block), true, true, null,
                     )
-                    activeVideoPost = null
+                    activePlaylist = null
                     playerController.open(post, block, true)
                 }
             },
@@ -929,11 +933,37 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun openPlayer(post: Post, block: Post.Block, fromStart: Boolean) {
-        activeVideoPost = post
-        watchHistory.remember(post)
+    internal fun openPlayer(post: Post, block: Post.Block, fromStart: Boolean, forceBuiltIn: Boolean = false) {
+        val playlist = PostPlaylist.open(post, block) ?: return
+        activePlaylist = playlist
+        watchHistory.remember(post, block)
         progressRevision++
-        playerController.open(post, block, fromStart)
+        playerController.open(post, block, fromStart, forceBuiltIn)
+    }
+
+    private fun playPlaylistItem(index: Int) {
+        val playlist = activePlaylist ?: return
+        val block = playlist.videos.getOrNull(index) ?: return
+        if (index != playlist.currentIndex) openPlayer(playlist.post, block, false, forceBuiltIn = true)
+    }
+
+    private fun restorePlaylist(state: Bundle?) {
+        if (state == null || !playerController.active || playerController.isLive) return
+        val slug = state.getString("playlist_slug").orEmpty()
+        val id = state.getString("playlist_post").orEmpty()
+        if (slug.isEmpty() || id.isEmpty()) return
+        val mediaId = playerController.mediaId
+        readInBackground(
+            request = { api.post(slug, id) },
+            done = { post ->
+                if (playerController.active && playerController.mediaId == mediaId) {
+                    activePlaylist = PostPlaylist.restore(
+                        post, state.getInt("playlist_index", -1), state.getString("builtin_video_id").orEmpty(),
+                    )
+                }
+            },
+            failed = {},
+        )
     }
 
     private fun retryDownload(entry: VideoDownloader.Entry) {
@@ -1157,6 +1187,12 @@ class MainActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
         outState.putBoolean("reopen_settings", currentRoute == AppRoute.Settings)
         playerController.saveState(outState)
+        val playlist = activePlaylist
+        if (playerController.active && playlist != null && playlist.videos.size > 1) {
+            outState.putString("playlist_slug", playlist.post.slug())
+            outState.putString("playlist_post", playlist.post.id())
+            outState.putInt("playlist_index", playlist.currentIndex)
+        }
         val feed = lastFeed
         if (feed != null) {
             outState.putBoolean("feed_route", true)

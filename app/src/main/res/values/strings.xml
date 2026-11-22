@@ -28,7 +28,7 @@
     <string name="login_action_change_number">Change number</string>
     <string name="login_action_resend">Resend</string>
     <string name="login_action_cancel_pair">Cancel pairing</string>
-    <string name="login_action_social">Via social network</string>
+    <string name="login_action_social">Email or social account</string>
     <string name="login_error_select_country">Select a country and enter a number or paste a full number with +.</string>
     <string name="login_error_code_format">Enter 6 digits from the message.</string>
     <string name="login_error_not_sent">Boosty did not confirm code sending.</string>
@@ -43,7 +43,7 @@
     <string name="login_pair_title">TV login</string>
     <string name="login_pair_transfer_current">Transfer current session</string>
     <string name="login_pair_by_phone">By phone number</string>
-    <string name="login_pair_via_social">Via social network on website</string>
+    <string name="login_pair_via_social">Email or social account on Boosty</string>
     <string name="login_pair_confirm_title">Transfer login to TV?</string>
     <string name="login_pair_confirm_message">TV will receive temporary access to your Boosty account. When access expires, it can be transferred again.</string>
     <string name="login_pair_confirm_grant">Transfer</string>
@@ -64,7 +64,7 @@
     <string name="login_web_no_session">No active session on boosty.to yet. Log in on the website and press the button again.</string>
     <string name="login_web_return">Finish login and wait for return to boosty.to.</string>
     <string name="login_web_unsupported_site">This site is not among supported Boosty login pages.</string>
-    <string name="login_web_google_browser">Google requires system browser. For Boosty ATV login you can use linked phone number.</string>
+    <string name="login_google_unavailable">Google sign-in in Boosty ATV is currently unavailable. Boosty needs to enable it for this app.</string>
     <string name="login_web_session_incomplete">Website has not completed Boosty login yet.</string>
     <string name="login_delivery_sms">Boosty chose SMS. Check messages on your phone.</string>
     <string name="login_delivery_telegram">Boosty chose Telegram. Check messages from Boosty bot.</string>
@@ -326,4 +326,9 @@
     <string name="live_no_source">Boosty hasn’t provided a playable live stream yet. Try again shortly.</string>
     <string name="live_playback_failed">The stream stopped. It may have ended or the connection may have dropped.</string>
     <string name="live_reload_failed">Couldn’t load live streams. Retry</string>
+    <string name="post_playlist_title">Post playlist</string>
+    <string name="post_playlist_position">%1$d of %2$d</string>
+    <string name="post_playlist_untitled">Video %1$d</string>
+    <string name="player_open_playlist">Open playlist, %1$s</string>
+    <string name="player_previous_video">Previous video</string>
 </resources>

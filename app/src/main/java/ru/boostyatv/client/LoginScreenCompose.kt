@@ -465,6 +465,12 @@ internal fun LoginScreenView(
                         onClick = { onOpenWebLogin(null) },
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    Text(
+                        text = stringResource(R.string.login_google_unavailable),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = palette.accent,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }
@@ -875,6 +881,7 @@ internal fun WebLoginScreenView(
     var webViewRef by remember { mutableStateOf<BoostyWebLogin?>(null) }
 
     fun finishSession(session: WebSession) {
+        if (backend.busy) return
         errorText = null
         backend.finishWebLogin(
             session = session,
