@@ -24,10 +24,17 @@ def hasReleaseSigning = signingValues.every { it.isPresent() && !it.get().isEmpt
 def versionCodeOverride = providers.gradleProperty('versionCode').orNull
 def versionNameOverride = providers.gradleProperty('versionName').orNull
 def baseVersionName = versionNameOverride ?: '2.7.0'
-def versionMatcher = baseVersionName =~ /^(\d+)\.(\d+)\.(\d+)/
-def baseVersionCode = versionMatcher.find()
-    ? versionMatcher.group(1).toInteger() * 1000000 + versionMatcher.group(2).toInteger() * 1000 + versionMatcher.group(3).toInteger()
-    : 1
+def versionMatcher = baseVersionName =~ /^(\d+)\.(\d+)\.(\d+)$/
+if (!versionMatcher.find()) {
+    throw new GradleException("versionName '$baseVersionName' must look like 1.2.3")
+}
+def major = versionMatcher.group(1).toInteger()
+def minor = versionMatcher.group(2).toInteger()
+def patch = versionMatcher.group(3).toInteger()
+if (minor > 999 || patch > 999) {
+    throw new GradleException("versionName '$baseVersionName' has minor or patch above 999; the versionCode formula would collide with the next major")
+}
+def baseVersionCode = major * 1000000 + minor * 1000 + patch
 
 android {
     namespace 'ru.boostyatv.client'
