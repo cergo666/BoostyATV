@@ -31,12 +31,10 @@ jobs:
       - name: Resolve version
         id: version
         shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION="${GITHUB_REF_NAME#v}"
-          fi
+          VERSION="${INPUT_VERSION:-${GITHUB_REF_NAME#v}}"
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Version must look like 1.2.3, got '$VERSION'"
             exit 1
@@ -52,23 +50,34 @@ jobs:
       - name: Decode release keystore
         shell: bash
         env:
-          KEYSTORE_BASE64: ${{ secrets.BOOSTY_KEYSTORE_BASE64 }}
+          BOOSTY_KEYSTORE_BASE64: ${{ secrets.BOOSTY_KEYSTORE_BASE64 }}
+          BOOSTY_KEYSTORE_PASSWORD: ${{ secrets.BOOSTY_KEYSTORE_PASSWORD }}
+          BOOSTY_KEY_ALIAS: ${{ secrets.BOOSTY_KEY_ALIAS }}
+          BOOSTY_KEY_PASSWORD: ${{ secrets.BOOSTY_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::Secret BOOSTY_KEYSTORE_BASE64 is not configured"
+          missing=0
+          for name in BOOSTY_KEYSTORE_BASE64 BOOSTY_KEYSTORE_PASSWORD BOOSTY_KEY_ALIAS BOOSTY_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret $name is not configured"
+              missing=1
+            fi
+          done
+          if [ "$missing" != 0 ]; then
             exit 1
           fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "$BOOSTY_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
       - name: Build signed APK
         env:
           BOOSTY_KEYSTORE: ${{ runner.temp }}/release.jks
           BOOSTY_KEYSTORE_PASSWORD: ${{ secrets.BOOSTY_KEYSTORE_PASSWORD }}
           BOOSTY_KEY_ALIAS: ${{ secrets.BOOSTY_KEY_ALIAS }}
           BOOSTY_KEY_PASSWORD: ${{ secrets.BOOSTY_KEY_PASSWORD }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
           bash gradlew :app:testDebugUnitTest :app:assembleRelease --parallel \
-            -PversionName="${{ steps.version.outputs.name }}" \
-            -PversionCode="${{ steps.version.outputs.code }}"
+            -PversionName="$VERSION_NAME" \
+            -PversionCode="$VERSION_CODE"
       - name: Rename APK for the in-app updater
         shell: bash
         run: |
