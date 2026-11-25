@@ -8,12 +8,19 @@ def keystoreFile = rootProject.file('keystore.properties')
 if (keystoreFile.exists()) {
     keystoreFile.withInputStream { keystoreProperties.load(it) }
 }
-def signingStore = System.getenv('BOOSTY_KEYSTORE') ?: keystoreProperties.getProperty('storeFile')
-def signingStorePassword = System.getenv('BOOSTY_KEYSTORE_PASSWORD') ?: keystoreProperties.getProperty('storePassword')
-def signingKeyAlias = System.getenv('BOOSTY_KEY_ALIAS') ?: keystoreProperties.getProperty('keyAlias')
-def signingKeyPassword = System.getenv('BOOSTY_KEY_PASSWORD') ?: keystoreProperties.getProperty('keyPassword')
-def hasReleaseSigning = signingStore != null && signingStorePassword != null
-    && signingKeyAlias != null && signingKeyPassword != null
+// Providers, not System.getenv: the configuration cache sees an environment change
+// as an input, so a cached entry cannot keep signing values from another run.
+// orElse receives an empty string, because a missing property would otherwise make
+// an absent provider look present.
+def envOrProperty = { String envName, String propertyName ->
+    providers.environmentVariable(envName).orElse(keystoreProperties.getProperty(propertyName, ''))
+}
+def signingStore = envOrProperty('BOOSTY_KEYSTORE', 'storeFile')
+def signingStorePassword = envOrProperty('BOOSTY_KEYSTORE_PASSWORD', 'storePassword')
+def signingKeyAlias = envOrProperty('BOOSTY_KEY_ALIAS', 'keyAlias')
+def signingKeyPassword = envOrProperty('BOOSTY_KEY_PASSWORD', 'keyPassword')
+def signingValues = [signingStore, signingStorePassword, signingKeyAlias, signingKeyPassword]
+def hasReleaseSigning = signingValues.every { it.isPresent() && !it.get().isEmpty() }
 def versionCodeOverride = providers.gradleProperty('versionCode').orNull
 def versionNameOverride = providers.gradleProperty('versionName').orNull
 def baseVersionName = versionNameOverride ?: '2.7.0'
@@ -38,10 +45,10 @@ android {
     signingConfigs {
         release {
             if (hasReleaseSigning) {
-                storeFile rootProject.file(signingStore)
-                storePassword signingStorePassword
-                keyAlias signingKeyAlias
-                keyPassword signingKeyPassword
+                storeFile rootProject.file(signingStore.get())
+                storePassword signingStorePassword.get()
+                keyAlias signingKeyAlias.get()
+                keyPassword signingKeyPassword.get()
             }
         }
     }
