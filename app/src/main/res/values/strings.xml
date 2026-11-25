@@ -64,7 +64,7 @@
     <string name="login_web_no_session">No active session on boosty.to yet. Log in on the website and press the button again.</string>
     <string name="login_web_return">Finish login and wait for return to boosty.to.</string>
     <string name="login_web_unsupported_site">This site is not among supported Boosty login pages.</string>
-    <string name="login_google_unavailable">Google sign-in in Boosty ATV is currently unavailable. Boosty needs to enable it for this app.</string>
+    <string name="login_google_unavailable">Google sign-in for Boosty ATV is currently unavailable. Boosty needs to enable it for this app.</string>
     <string name="login_web_session_incomplete">Website has not completed Boosty login yet.</string>
     <string name="login_delivery_sms">Boosty chose SMS. Check messages on your phone.</string>
     <string name="login_delivery_telegram">Boosty chose Telegram. Check messages from Boosty bot.</string>
