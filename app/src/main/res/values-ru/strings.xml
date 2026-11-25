@@ -78,7 +78,6 @@
     <!-- Feed -->
     <string name="feed_subscriptions">Подписки</string>
     <string name="feed_qr_description">Сканировать QR для подключения ТВ</string>
-    <string name="feed_menu">Меню</string>
     <string name="feed_all_posts">Все посты</string>
     <string name="feed_videos_only">Видео</string>
     <string name="feed_channel_search">Поиск видео</string>
@@ -154,7 +153,6 @@
     <!-- Account menu -->
     <string name="account_refresh_feed">Обновить ленту</string>
     <string name="account_settings">Настройки</string>
-    <string name="account_about">О программе</string>
     <string name="account_logout">Выйти из аккаунта</string>
     <string name="account_logout_confirm">Выйти из аккаунта Boosty на этом устройстве?</string>
     <string name="account_logout_button">Выйти</string>
