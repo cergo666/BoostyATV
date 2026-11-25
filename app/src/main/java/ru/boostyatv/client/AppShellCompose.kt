@@ -78,6 +78,7 @@ private val TvNavEntries = listOf(
 private val PhoneNavEntries = listOf(
     NavEntry(AppTab.HOME, R.drawable.ic_home, R.string.nav_home),
     NavEntry(AppTab.CHANNELS, R.drawable.ic_subscriptions, R.string.feed_subscriptions),
+    NavEntry(AppTab.HISTORY, R.drawable.ic_history, R.string.nav_history),
     NavEntry(AppTab.SETTINGS, R.drawable.ic_settings, R.string.settings_title),
     NavEntry(AppTab.ACCOUNT, R.drawable.ic_person, R.string.nav_account),
 )
