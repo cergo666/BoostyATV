@@ -824,13 +824,15 @@ internal class PlayerSessionController(
     @Suppress("DEPRECATION")
     private fun fullscreen(enabled: Boolean) {
         if (Build.VERSION.SDK_INT >= 30) {
-            val controller = activity.window.insetsController ?: return
-            if (enabled) {
-                controller.systemBarsBehavior =
-                    android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                controller.hide(WindowInsets.Type.systemBars())
-            } else {
-                controller.show(WindowInsets.Type.systemBars())
+            val controller = activity.window.insetsController
+            if (controller != null) {
+                if (enabled) {
+                    controller.systemBarsBehavior =
+                        android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    controller.hide(WindowInsets.Type.systemBars())
+                } else {
+                    controller.show(WindowInsets.Type.systemBars())
+                }
             }
         } else {
             activity.window.decorView.systemUiVisibility = if (enabled) {
