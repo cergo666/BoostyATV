@@ -148,16 +148,14 @@ internal class PlayerSessionController(
     private val externalPlayer: ActivityResultLauncher<Intent> = activity.registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val item = externalVideo
-        val app = externalApp
-        externalVideo = null
-        externalApp = null
-        if (item == null || app == null) return@registerForActivityResult
-        val progress = app.result(result.resultCode, result.data, item.durationMs())
-        if (progress != null) {
-            recordProgress(item, progress.position(), progress.duration())
-            callbacks.onProgressUpdated()
-        }
+        val launch = externalLaunch
+        externalLaunch = null
+        if (launch == null) return@registerForActivityResult
+        val progress = launch.app.result(result.resultCode, result.data, launch.video.durationMs())
+        val position = progress?.position() ?: launch.position
+        val duration = progress?.duration() ?: launch.video.durationMs()
+        recordProgress(launch.video, position, duration)
+        callbacks.onProgressUpdated()
     }
     private val notificationPermission: ActivityResultLauncher<String> = activity.registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -204,8 +202,13 @@ internal class PlayerSessionController(
         private set
 
     private var video: Post.Block? = null
-    private var externalVideo: Post.Block? = null
-    private var externalApp: PlaybackOptions.App? = null
+    private data class ExternalLaunch(
+        val app: PlaybackOptions.App,
+        val video: Post.Block,
+        val position: Long,
+    )
+
+    private var externalLaunch: ExternalLaunch? = null
     private var playbackSources: List<Post.Source> = emptyList()
     private var sourceIndex = 0
     private var playbackPosition = 0L
@@ -288,16 +291,25 @@ internal class PlayerSessionController(
 
     fun restoreState(savedState: Bundle?) {
         if (savedState != null && savedState.containsKey("external_player")) {
-            externalApp = PlaybackOptions.App.valueOf(savedState.getString("external_player")!!)
-            externalVideo = Post.Block(
-                "video",
-                "",
-                "",
-                emptyList(),
-                savedState.getString("external_video", ""),
-                0,
-                savedState.getLong("external_duration"),
-            )
+            // A value written by an older version can name an app that no longer
+            // exists; the saved state should not take the whole screen down with it.
+            val app = runCatching { PlaybackOptions.App.valueOf(savedState.getString("external_player") ?: "") }
+                .getOrNull()
+            if (app != null) {
+                externalLaunch = ExternalLaunch(
+                    app,
+                    Post.Block(
+                        "video",
+                        "",
+                        "",
+                        emptyList(),
+                        savedState.getString("external_video", ""),
+                        0,
+                        savedState.getLong("external_duration"),
+                    ),
+                    savedState.getLong("external_position"),
+                )
+            }
         }
         if (savedState == null || !savedState.containsKey("builtin_media_id")) return
         val urls = savedState.getStringArrayList("builtin_urls")
@@ -356,12 +368,12 @@ internal class PlayerSessionController(
             out.putBoolean("builtin_playing", player?.playWhenReady ?: resumePlayback)
             out.putFloat("builtin_speed", playbackSpeed)
         }
-        val extVideo = externalVideo
-        val extApp = externalApp
-        if (extVideo != null && extApp != null) {
-            out.putString("external_player", extApp.name)
-            out.putString("external_video", extVideo.videoId())
-            out.putLong("external_duration", extVideo.durationMs())
+        val launch = externalLaunch
+        if (launch != null) {
+            out.putString("external_player", launch.app.name)
+            out.putString("external_video", launch.video.videoId())
+            out.putLong("external_duration", launch.video.durationMs())
+            out.putLong("external_position", launch.position)
         }
     }
 
@@ -745,14 +757,18 @@ internal class PlayerSessionController(
                     Intent.createChooser(intent, activity.getString(R.string.player_external_chooser))
                 )
             } else {
-                externalVideo = block
-                externalApp = app
+                val previous = externalLaunch
+                if (previous != null) {
+                    // A replaced launch never reports a result, so the progress the
+                    // outgoing player was given has to be kept here.
+                    recordProgress(previous.video, previous.position, previous.video.durationMs())
+                }
+                externalLaunch = ExternalLaunch(app, block, position)
                 externalPlayer.launch(intent)
             }
             true
         } catch (_: ActivityNotFoundException) {
-            externalVideo = null
-            externalApp = null
+            externalLaunch = null
             Toast.makeText(activity, activity.getString(R.string.player_external_not_found), Toast.LENGTH_LONG).show()
             false
         }
