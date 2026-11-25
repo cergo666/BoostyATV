@@ -3,11 +3,15 @@
 # are referenced from the manifest or resolved indirectly.
 
 -keepattributes SourceFile,LineNumberTable
+-keepattributes *Annotation*
 -renamesourcefileattribute SourceFile
 
-# ZXing creates its activities and views from the manifest/library metadata.
--keep class com.journeyapps.barcodescanner.** { *; }
--keep class com.google.zxing.** { *; }
+# Only the capture activity is instantiated by name from the manifest and only the
+# scanner view is inflated from the library's layout. The rest of ZXing is reached
+# through the classes this app calls directly, so keeping whole packages would
+# block shrinking of the symbologies and result parsers that are never used.
+-keep class com.journeyapps.barcodescanner.CaptureActivity { *; }
+-keep class com.journeyapps.barcodescanner.DecoratedBarcodeView { *; }
 
 # Keep JSON models used through reflection-free Android APIs explicit.
 -keepclassmembers class * implements android.os.Parcelable {
