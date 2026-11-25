@@ -218,7 +218,7 @@ internal fun PostScreenView(
         }
     }
 
-    val featuredIndex = remember(post.id(), isTv) {
+    val featuredIndex = remember(post, isTv) {
         if (!isTv) -1 else post.blocks().indexOfFirst { it.sources().isNotEmpty() }
     }
 
