@@ -384,32 +384,45 @@ internal fun FeedScreenView(
         }
     }
 
-    LaunchedEffect(state.pendingScroll, state.visible.size, state.next) {
+    // Full-width rows drawn before the post cards. A grid index is not a post index:
+    // scrolling and prefetching have to shift by these rows.
+    val liveShelf = state.search.isBlank() && state.selectedTags.isEmpty() &&
+        (state.liveStreams.isNotEmpty() ||
+            (state.liveStreamsFailed && !state.failed && !state.loading && state.visible.isNotEmpty()))
+    val channelsShelf = isHome && state.unfiltered() && authorsState != null && authorsState.items.isNotEmpty()
+    val continueShelf = continueWatching.isNotEmpty()
+    val watchLaterShelf = isHome && state.unfiltered() && savedPosts.isNotEmpty()
+    val postsGridOffset = 1 + (if (liveShelf) 1 else 0) + (if (channelsShelf) 1 else 0) +
+        (if (continueShelf) 1 else 0) + (if (watchLaterShelf) 1 else 0)
+
+    LaunchedEffect(state.pendingScroll, state.visible.size, state.next, postsGridOffset) {
         val target = state.pendingScroll
         if (target >= 0 && (target <= state.visible.size || state.next.isEmpty())) {
             val safeIndex = target.coerceAtMost(state.visible.size)
-            state.gridState.scrollToItem(safeIndex)
+            state.gridState.scrollToItem(if (state.visible.isEmpty()) 0 else postsGridOffset + safeIndex)
             state.pendingScroll = -1
         }
     }
 
     val artwork = LocalArtwork.current
-    val lastVisibleIndex by remember(state) {
+    val lastVisiblePostIndex by remember(state, postsGridOffset) {
         derivedStateOf {
-            state.gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val lastItem = state.gridState.layoutInfo.visibleItemsInfo.lastOrNull()
+            if (lastItem == null) -1
+            else (lastItem.index - postsGridOffset).coerceIn(-1, state.visible.lastIndex)
         }
     }
-    LaunchedEffect(lastVisibleIndex, state.visible.size, state.next, state.loading, isTv) {
+    LaunchedEffect(lastVisiblePostIndex, state.visible.size, state.next, state.loading, isTv) {
         val threshold = if (isTv) 12 else 8
-        state.maybeLoadMore(lastVisibleIndex, prefetchThreshold = threshold)
+        state.maybeLoadMore(lastVisiblePostIndex, prefetchThreshold = threshold)
     }
 
     // Proactively warm disk+RAM artwork cache ahead of the viewport (YouTube/SmartTube style)
-    LaunchedEffect(lastVisibleIndex, state.visible.size, artwork) {
+    LaunchedEffect(lastVisiblePostIndex, state.visible.size, artwork) {
         if (artwork == null || state.visible.isEmpty()) return@LaunchedEffect
         val ahead = if (isTv) 12 else 6
-        val start = (lastVisibleIndex - 2).coerceAtLeast(0)
-        val end = (lastVisibleIndex + ahead).coerceAtMost(state.visible.lastIndex)
+        val start = (lastVisiblePostIndex - 2).coerceAtLeast(0)
+        val end = (lastVisiblePostIndex + ahead).coerceAtMost(state.visible.lastIndex)
         for (idx in start..end) {
             val post = state.visible[idx]
             val cover = post.cover()
@@ -559,12 +572,12 @@ internal fun FeedScreenView(
                         }
                     }
 
-                    if (state.search.isBlank() && state.selectedTags.isEmpty()) {
+                    if (liveShelf) {
                         if (state.liveStreams.isNotEmpty()) {
                             item(key = "live_streams", contentType = "live", span = { GridItemSpan(maxLineSpan) }) {
                                 LiveStreamsShelf(state.liveStreams, onOpenLiveStream, onFocusArtwork)
                             }
-                        } else if (state.liveStreamsFailed && !state.failed && !state.loading && state.visible.isNotEmpty()) {
+                        } else {
                             item(key = "live_streams_failed", span = { GridItemSpan(maxLineSpan) }) {
                                 BoostyButton(
                                     text = stringResource(R.string.live_reload_failed),
@@ -575,7 +588,7 @@ internal fun FeedScreenView(
                         }
                     }
 
-                    if (isHome && state.unfiltered() && authorsState != null && authorsState.items.isNotEmpty()) {
+                    if (channelsShelf) {
                         item(key = "home_channels", contentType = "channels", span = { GridItemSpan(maxLineSpan) }) {
                             HomeChannelsShelf(
                                 authors = authorsState.items,
@@ -584,7 +597,7 @@ internal fun FeedScreenView(
                         }
                     }
 
-                    if (continueWatching.isNotEmpty()) {
+                    if (continueShelf) {
                         item(key = "continue_watching", contentType = "continue", span = { GridItemSpan(maxLineSpan) }) {
                             ContinueWatchingShelf(
                                 items = continueWatching,
@@ -595,7 +608,7 @@ internal fun FeedScreenView(
                         }
                     }
 
-                    if (isHome && state.unfiltered() && savedPosts.isNotEmpty()) {
+                    if (watchLaterShelf) {
                         item(key = "watch_later", contentType = "watch_later", span = { GridItemSpan(maxLineSpan) }) {
                             WatchLaterShelf(
                                 items = savedPosts,
