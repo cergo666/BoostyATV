@@ -64,7 +64,7 @@
 .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --parallel
 ```
 
-Unit-тесты (JVM) проверяют парсинг публикаций, релизов GitHub, реакций, номеров телефонов, качества видео и истории просмотра. Тестовый APK появится в `app/build/outputs/apk/debug/app-debug.apk`. Он устанавливается рядом с релизом как **Boosty ATV Test**. Сессия и настройки хранятся отдельно. Обновления GitHub относятся к релизной версии. Для установки на подключённое устройство выполните `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
+Unit-тесты (JVM) проверяют парсинг публикаций, релизов GitHub, реакций, номеров телефонов, качества видео и истории просмотра. Тестовый APK появится в `app/build/outputs/apk/debug/app-debug.apk`. Он устанавливается рядом с релизом под тем же именем **Boosty ATV**, но с отдельным `applicationId` (`ru.boostyatv.client.debug`) и версией с суффиксом `-debug`, поэтому сессия и настройки хранятся отдельно. Обновления GitHub относятся к релизной версии. Для установки на подключённое устройство выполните `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
 
 ```powershell
 .\gradlew.bat :app:connectedDebugAndroidTest
