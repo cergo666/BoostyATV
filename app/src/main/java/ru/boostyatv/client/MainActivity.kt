@@ -83,6 +83,7 @@ class MainActivity : ComponentActivity() {
     internal var currentRoute by mutableStateOf<AppRoute>(AppRoute.Login)
         private set
     private val backStack = mutableStateListOf<AppRoute>()
+    private val backStackLimit = 10
     internal var homeFeed by mutableStateOf<FeedState?>(null)
         private set
     internal var currentFeed by mutableStateOf<FeedState?>(null)
@@ -809,7 +810,7 @@ class MainActivity : ComponentActivity() {
     private fun navigateTo(route: AppRoute, push: Boolean) {
         if (push && currentRoute != route) {
             backStack.add(currentRoute)
-            while (backStack.size > Navigator.LIMIT) backStack.removeAt(0)
+            while (backStack.size > backStackLimit) backStack.removeAt(0)
         }
         currentRoute = route
         if (route !is AppRoute.Home && route !is AppRoute.ChannelFeed) {
