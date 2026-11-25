@@ -75,7 +75,9 @@ android {
 
     lint {
         abortOnError true
-        checkReleaseBuilds true
+        // CI runs :app:lintDebug explicitly; a second pass inside assembleRelease
+        // would repeat the same checks for every build.
+        checkReleaseBuilds false
     }
 
     buildFeatures {
